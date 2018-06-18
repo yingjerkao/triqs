@@ -37,10 +37,10 @@ namespace triqs::gfs {
     //ASSERT_EQUAL(g_in.data().indexmap().strides()[1], g_in.data().shape()[1], "Unexpected strides in fourier implementation");
     //ASSERT_EQUAL(g_in.data().indexmap().strides()[2], 1, "Unexpected strides in fourier implementation");
 
-    //check periodization_matrix is diagonal
-    for (int i = 0; i < g_in.mesh().periodization_matrix.shape()[0]; i++)
-      for (int j = 0; j < g_in.mesh().periodization_matrix.shape()[1]; j++)
-        if (i != j and g_in.mesh().periodization_matrix(i, j) != 0) TRIQS_RUNTIME_ERROR << "Periodization matrix must be diagonal for FFTW to work";
+    ////check periodization_matrix is diagonal
+    //for (int i = 0; i < g_in.mesh().periodization_matrix.shape()[0]; i++)
+      //for (int j = 0; j < g_in.mesh().periodization_matrix.shape()[1]; j++)
+        //if (i != j and g_in.mesh().periodization_matrix(i, j) != 0) TRIQS_RUNTIME_ERROR << "Periodization matrix must be diagonal for FFTW to work";
 
     auto g_out    = gf_vec_t<V1>{out_mesh, g_in.target_shape()[0]};
     long n_others = second_dim(g_in.data());
