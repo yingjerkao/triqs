@@ -1052,7 +1052,7 @@ namespace triqs {
         TRIQS_ASSERT(p < N);
         TRIQS_ASSERT(p >= 0);
 
-        last_try = NoTry; // CHANGE this ?
+        last_try = NoTry; // FIXME : debug only CHANGE this ?
         w1.i     = i;
         w1.j     = j;
         w1.ireal = row_num[i];
@@ -1060,52 +1060,58 @@ namespace triqs {
         w1.x     = x;
         w1.y     = y;
 
-	// I add the row and col and the end. If the move is rejected,
-        // no effect since N will not be changed : Minv(i,j) for i,j>=N has no meaning.
-        // temporary modification of row i and col j
-	x_type tmp1 = x_values[w1.ireal]; // FIXME : not very clean 
-	y_type tmp2 = y_values[w1.jreal];
-	x_values[w1.ireal] = xi;
-	y_values[w1.jreal] = yj;
-      
-      	auto delta_x = w1.MC;
-	auto delta_y = w1.MB; // FIXME : should be allocated once for all ?
-        
-	for (size_t k = 0; k < N; k++) {
+        // FIXME : should be allocated once for all ?	
+	auto delta_x = w1.MC;
+	auto delta_y = w1.MB; 
+	auto X = delta_x;
+	auto Y = delta_y;
+
+	// Compute delta_x, delta_y.
+        for (size_t i = 0; i < N; i++) { // MC :  delta_x, MB : delta_y
+          delta_x(i) = f(x_values[i], y) - f(x_values[i], y_values[w1.jreal]);
+          delta_y(i) = f(x, y_values[i]) - f(x_values[w1.ireal], y_values[i]);
+        }
+        delta_x(w1.ireal) = f(x, y) - f(x_values[w1.ireal], y_values[w1.jreal]);
+        delta_y(w1.jreal) = 0;
+
+        range R(0, N);
+        // C : X, B : Y
+        // X(R) = mat_inv(R,R) * delta_x(R);
+        // Y(R) = mat_inv(R,R).transpose() * delta_y(R); // OPTIMIZE BELOW
+        blas::gemv(1.0, mat_inv(R, R), delta_x(R), 0.0, X(R));
+        blas::gemv(1.0, mat_inv(R, R).transpose(), delta_y(R), 0.0, Y(R));
+
+        // Xn, etc...
+        auto Xp        = X(w1.jreal);
+        auto Yp        = Y(w1.ireal);
+        auto Z         = arrays::dot(delta_y(R), X(R));
+        auto Mpp       = mat_inv(w1.jreal, w1.ireal);
+        auto D         = (1 + Xn) * (1 + Yn) - Mnn * Z;
+ 
+        // B and C	
+	for (int k = 0; k < N; k++) {
           w1.B(k) = f(x_values[k], ylast);
           w1.C(k) = f(xlast, y_values[k]);
         }
-        for (size_t i = 0; i < N; i++) { 
-          delta_x(i) = f(x_values[i], yj) - f(x_values[i], y_values[w1.jreal]);
-          delta_y(i) = f(xi, y_values[i]) - f(x_values[w1.ireal], y_values[i]);
-        }
-        delta_y(w1.jreal) = 0;
-	x_values[w1.ireal] = tmp1;
-	y_values[w1.jreal] = tmp2;
+	w1.B(w1.ireal) = f(xi, ylast);
+	w1.C(w1.jreal) = f(xlast, yj);
 
-        range R(0, N);
-        //w1.MB(R) = mat_inv(R,R) * w1.B(R);// OPTIMIZE BELOW
-        //w1.MC(R1) = mat_inv(R1,R1).transpose() * w1.C(R1); //OPTIMIZE BELOW
+        //w1.MB(R) = mat_inv(R,R) * w1.B(R);
+        //w1.MC(R1) = mat_inv(R1,R1).transpose() * w1.C(R1); 
         blas::gemv(1.0, mat_inv(R, R), w1.B(R), 0.0, w1.MB(R));
         blas::gemv(1.0, mat_inv(R, R).transpose(), w1.C(R), 0.0, w1.MC(R));
        	w1.MC(N) = -1;
         w1.MB(N) = -1;
-        
-	auto ksi = f(xlast, ylast) - arrays::dot(w1.C(R), w1.MB(R));
+       
+        auto CMB = arrays::dot(w1.C(R), w1.MB(R));
+	auto CX  = arrays::dot(X(R), w1.C(R));
+	auto YB  = arrays::dot(Y(R), w1.B(R)); // no star, just dot
+        auto MBp = w1.MB(w1.jreal);
+        auto CMp = w1.MB(w1.ireal);
 
-	// Compute X, Y
-        blas::gemv(1.0, mat_inv(R, R), delta_x(R), 0.0, X(R));
-        blas::gemv(1.0, mat_inv(R, R).transpose(),delta_y(R), 0.0, Y(R));
+	// 
+	auto det_ratio = f(xlast, ylast) - (CMB  - ( (1+Yp)*CX*MBp + (1 + Xp)*CMp*YB - Mpp*CX*YB - Z*CMp*MBp)/D);
 
-        auto CM_delta_x   = arrays::dot(w1.MC(R), delta_x(R));
-        auto BM_delta_y   = arrays::dot(w1.MB(R), delta_y(R));
-
-        // compute the det_ratio
-        auto Xn        = X(w1.jreal) + w1.MB(w1.jreal) * CM_delta_x / ksi;
-        auto Yn        = Y(w1.ireal) + w1.MC(w1.ireal) * BM_delta_y / ksi;
-        auto Z         = arrays::dot(delta_y(R), X(R)) + CM_delta_x * BM_delta_y / ksi;
-        auto Mnn       = mat_inv(w1.jreal, w1.ireal) +  w1.MB(w1.jreal) * w1.MC(w1.ireal) / ksi;
-        auto det_ratio = (1 + Xn) * (1 + Yn) - Mnn * Z;
         w1.ksi         = det_ratio;
         newdet         = det * det_ratio;
         newsign        = sign;
