@@ -1046,7 +1046,7 @@ namespace triqs {
      * Returns the ratio of det Minv_new / det Minv.
      * This routine does NOT make any modification. It has to be completed with complete_operation().
      */
-      value_type try_change_col_row_and_insert(int i, int j, x_type const &xi, y_type const &yj, x_type const &xlast, y_type const &ylast) {
+    /*  value_type try_change_col_row_and_insert(int i, int j, x_type const &xi, y_type const &yj, x_type const &xlast, y_type const &ylast) {
         TRIQS_ASSERT(last_try == NoTry);
         TRIQS_ASSERT(N<0); // N=0 should be treated separately, if at all useful
         TRIQS_ASSERT(p < N);
@@ -1120,7 +1120,7 @@ namespace triqs {
       //------------------------------------------------------------------------------------------
       private:
       void complete_change_col_row_and_insert() = delete; // not implemented yet
-
+*/
       //------------------------------------------------------------------------------------------
       public:
       /**
