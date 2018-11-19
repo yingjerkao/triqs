@@ -959,18 +959,6 @@ namespace triqs {
       }
 
       //------------------------------------------------------------------------------------------
-      
-      // swap two lines in matrix and update permutation
-      void _swap_rows(long i, long j) { 
-        
-
-      }
-      
-      void _swap_cols(long i, long j) { 
-	
-
-      }
-
       public:
       /**
      * Consider the change the row i and column j and the corresponding x and y
@@ -993,35 +981,27 @@ namespace triqs {
         w1.x     = x;
         w1.y     = y;
 
-	 // FAUX 
-        // Compute the new column and row 
-        for (long i = 0; i < N - 1; i++) { 
-          w1.Cprime(i) = f(x_values[i], y);
-          w1.Bprime(i) = f(x, y_values[i]);
+        // Compute the col B.
+        for (size_t i = 0; i < N; i++) { // MC :  delta_x, MB : delta_y
+          w1.MC(i) = f(x_values[i], y) - f(x_values[i], y_values[w1.jreal]);
+          w1.MB(i) = f(x, y_values[i]) - f(x_values[w1.ireal], y_values[i]);
         }
-        w1.Cprime(w1.ireal) = f(x_values[N-1], y);
-        w1.Bprime(w1.jreal) = f(x, y_values[N-1]);
-        auto Dprime = f(x, y);
+        w1.MC(w1.ireal) = f(x, y) - f(x_values[w1.ireal], y_values[w1.jreal]);
+        w1.MB(w1.jreal) = 0;
 
-	// swap to put M in the correct form {{a b}, {c, d}}
-	_swap_rows(i, N - 1);
-	_swap_cols(j, N - 1);
-       
-	// Taking view of the pieces
-	auto a = mat_inv(R1, R1);
-	auto c = mat_inv(N-1, R1);
-        auto b = mat_inv(R1, N-1);
-        auto d = mat_inv(N-1, N-1);
-        
-	// aB'
-        blas::gemv(1.0, a, w1.Bprime(R1), 0.0, w1.aBprime(R1));
-        
-        auto cBprime = arrays::dot(c, w1.Bprime(R1));
-        auto Cprimeb = arrays::dot(w1.Cprime(R1), b);
-	auto Cprime_a_Bprime = arrays::dot(w1.Cprime(R1), w1.aBprime(R1));
+        range R(0, N);
+        // C : X, B : Y
+        //w1.C(R) = mat_inv(R,R) * w1.MC(R);// OPTIMIZE BELOW
+        blas::gemv(1.0, mat_inv(R, R), w1.MC(R), 0.0, w1.C(R));
+        //w1.B(R) = mat_inv(R,R).transpose() * w1.MB(R); // OPTIMIZE BELOW
+        blas::gemv(1.0, mat_inv(R, R).transpose(), w1.MB(R), 0.0, w1.B(R));
 
-	auto det_ratio = d * ( Dprime - Cprime_a_Bprime + Cprimeb * (1.0/d) * cBprime);
-
+        // compute the det_ratio
+        auto Xn        = w1.C(w1.jreal);
+        auto Yn        = w1.B(w1.ireal);
+        auto Z         = arrays::dot(w1.MB(R), w1.C(R));
+        auto Mnn       = mat_inv(w1.jreal, w1.ireal);
+        auto det_ratio = (1 + Xn) * (1 + Yn) - Mnn * Z;
         w1.ksi         = det_ratio;
         newdet         = det * det_ratio;
         newsign        = sign;
@@ -1058,21 +1038,23 @@ namespace triqs {
           }
       }
 
-           //------------------------------------------------------------------------------------------
+      //------------------------------------------------------------------------------------------
       public:
       /**
-     * Consider the change the row and column p, and insert one row and one column at position last = N+1
+     * Consider the change the row i and column j and the corresponding x and y
      *
      * Returns the ratio of det Minv_new / det Minv.
      * This routine does NOT make any modification. It has to be completed with complete_operation().
      */
-    /*  value_type try_change_col_row_and_insert(int i, int j, x_type const &xi, y_type const &yj, x_type const &xlast, y_type const &ylast) {
+      value_type onlytry_change_col_row(size_t i, size_t j, x_type const &x, y_type const &y) {
         TRIQS_ASSERT(last_try == NoTry);
-        TRIQS_ASSERT(N<0); // N=0 should be treated separately, if at all useful
-        TRIQS_ASSERT(p < N);
-        TRIQS_ASSERT(p >= 0);
+        TRIQS_ASSERT(j < N);
+        TRIQS_ASSERT(j >= 0);
+        TRIQS_ASSERT(i < N);
+        TRIQS_ASSERT(i >= 0);
 
-        last_try = NoTry; // FIXME : debug only CHANGE this ?
+	if (N==1) return f(x,y)*mat_inv(0,0);
+
         w1.i     = i;
         w1.j     = j;
         w1.ireal = row_num[i];
@@ -1080,67 +1062,253 @@ namespace triqs {
         w1.x     = x;
         w1.y     = y;
 
-        // FIXME : should be allocated once for all ?	
-	auto delta_x = w1.MC;
-	auto delta_y = w1.MB; 
-	auto X = delta_x;
-	auto Y = delta_y;
+	vector_type Cprime(N-1), Bprime(N-1), aBprime(N-1);
 
-	// Compute delta_x, delta_y.
-        for (size_t i = 0; i < N; i++) { // MC :  delta_x, MB : delta_y
-          delta_x(i) = f(x_values[i], y) - f(x_values[i], y_values[w1.jreal]);
-          delta_y(i) = f(x, y_values[i]) - f(x_values[w1.ireal], y_values[i]);
+        // Compute the new column and row 
+        for (long i = 0; i < N - 1; i++) { 
+          Bprime(i) = f(x_values[i], y);
+          Cprime(i) = f(x, y_values[i]);
         }
-        delta_x(w1.ireal) = f(x, y) - f(x_values[w1.ireal], y_values[w1.jreal]);
-        delta_y(w1.jreal) = 0;
+        if (w1.ireal !=N-1) Bprime(w1.ireal) = f(x_values[N-1], y);
+        if (w1.jreal !=N-1) Cprime(w1.jreal) = f(x, y_values[N-1]);
+        auto Dprime = f(x, y);
 
-        range R(0, N);
-        // C : X, B : Y
-        // X(R) = mat_inv(R,R) * delta_x(R);
-        // Y(R) = mat_inv(R,R).transpose() * delta_y(R); // OPTIMIZE BELOW
-        blas::gemv(1.0, mat_inv(R, R), delta_x(R), 0.0, X(R));
-        blas::gemv(1.0, mat_inv(R, R).transpose(), delta_y(R), 0.0, Y(R));
+	range R(0, N);
+	matrix_type M = mat_inv(R, R);
+        if (w1.jreal !=N-1) arrays::deep_swap(M(w1.jreal, R), M(N - 1, R));
+        if (w1.ireal !=N-1) arrays::deep_swap(M(R, w1.ireal), M(R, N - 1));
 
-        // Xn, etc...
-        auto Xp        = X(w1.jreal);
-        auto Yp        = Y(w1.ireal);
-        auto Z         = arrays::dot(delta_y(R), X(R));
-        auto Mpp       = mat_inv(w1.jreal, w1.ireal);
-        auto D         = (1 + Xn) * (1 + Yn) - Mnn * Z;
- 
-        // B and C	
-	for (int k = 0; k < N; k++) {
-          w1.B(k) = f(x_values[k], ylast);
-          w1.C(k) = f(xlast, y_values[k]);
-        }
-	w1.B(w1.ireal) = f(xi, ylast);
-	w1.C(w1.jreal) = f(xlast, yj);
-
-        //w1.MB(R) = mat_inv(R,R) * w1.B(R);
-        //w1.MC(R1) = mat_inv(R1,R1).transpose() * w1.C(R1); 
-        blas::gemv(1.0, mat_inv(R, R), w1.B(R), 0.0, w1.MB(R));
-        blas::gemv(1.0, mat_inv(R, R).transpose(), w1.C(R), 0.0, w1.MC(R));
-       	w1.MC(N) = -1;
-        w1.MB(N) = -1;
+	// Taking view of the pieces
+	range R1(0, N-1);
+	auto a = M(R1, R1);
+	auto c = M(N-1, R1);
+        auto b = M(R1, N-1);
+        auto d = M(N-1, N-1);
        
-        auto CMB = arrays::dot(w1.C(R), w1.MB(R));
-	auto CX  = arrays::dot(X(R), w1.C(R));
-	auto YB  = arrays::dot(Y(R), w1.B(R)); // no star, just dot
-        auto MBp = w1.MB(w1.jreal);
-        auto CMp = w1.MB(w1.ireal);
+	// aB'
+        blas::gemv(1.0, a, Bprime, 0.0, aBprime);
+        
+        auto cBprime = arrays::dot(c, Bprime);
+        auto Cprimeb = arrays::dot(Cprime, b);
+	auto Cprime_a_Bprime = arrays::dot(Cprime, aBprime);
 
-	// 
-	auto det_ratio = f(xlast, ylast) - (CMB  - ( (1+Yp)*CX*MBp + (1 + Xp)*CMp*YB - Mpp*CX*YB - Z*CMp*MBp)/D);
-
-        w1.ksi         = det_ratio;
-        newdet         = det * det_ratio;
-        newsign        = sign;
-        return det_ratio; // newsign/sign is unity
+	auto det_ratio = d * ( Dprime - Cprime_a_Bprime)  + Cprimeb * cBprime;
+        return det_ratio; 
       }
+
+       public:
+
+      // ------------------------------------------------------------
+
+    value_type onlytry_change_2cols_2rows(std::vector<int> const & iv, std::vector<int> const & jv, std::vector<x_type> const &xv, std::vector<y_type> const &yv) {
+        TRIQS_ASSERT(last_try == NoTry);
+        TRIQS_ASSERT (N>2); //FIXME
+	// FIXME Other checks
+
+
+	//if (N==2) return (f(xv[0],yv[0])*f(xv[1],yv[1]) - f(xv[0],yv[1])*f(xv[1],yv[0])) * 
+	//  (mat_inv(0,0) * mat_inv(1,1) - mat_inv(0,1) * mat_inv(1,0));
+
+	std::vector<int> ireal(2);
+	std::vector<int> jreal(2);
+	std::vector<x_type> x(2);
+	std::vector<y_type> y(2);
+
+	// a_row0 is an integer that describes where row_num[iv[0]] should be put in ireal
+	int a_row0 = ((row_num[iv[1]] == N-2) || (row_num[iv[0]] == N-1)) ? 1 : 0;
+	// same for a_col0
+	int a_col0 = ((col_num[jv[1]] == N-2) || (col_num[jv[0]] == N-1)) ? 1 : 0;
+
+        ireal[a_row0] = row_num[iv[0]];
+        jreal[a_col0] = col_num[jv[0]];
+        x[a_row0]     = xv[0];
+        y[a_col0]     = yv[0];
+
+        ireal[1 - a_row0] = row_num[iv[1]];
+        jreal[1 - a_col0] = col_num[jv[1]];
+        x[1 - a_row0]     = xv[1];
+        y[1 - a_col0]     = yv[1];
+
+	auto x_vals = x_values;
+	auto y_vals = y_values;
+
+        x_vals[ireal[0]] = x_values[N-2];
+        y_vals[jreal[0]] = y_values[N-2];
+        x_vals[ireal[1]] = x_values[N-1];
+        y_vals[jreal[1]] = y_values[N-1];
+
+	matrix_type Cprime(2,N-2), Bprime(N-2,2), Dprime(2,2);
+
+        // Compute the new column and row 
+        for (long i = 0; i < N - 2; i++) { 
+	  for (int j = 0; j < 2; j++) {
+            Bprime(i,j) = f(x_vals[i], y[j]);
+            Cprime(j,i) = f(x[j], y_vals[i]);
+	  }
+        }
+
+	for (int i = 0; i < 2; i++) {
+	  for (int j = 0; j < 2; j++) {
+	    Dprime(i,j) = f(x[i],y[j]); 
+	  }
+	}
+
+	range R(0, N);
+	matrix_type M = mat_inv(R, R);
+        if (jreal[0] !=N-2) arrays::deep_swap(M(jreal[0], R), M(N - 2, R));
+        if (ireal[0] !=N-2) arrays::deep_swap(M(R, ireal[0]), M(R, N - 2));
+
+        if (jreal[1] !=N-1) arrays::deep_swap(M(jreal[1], R), M(N - 1, R));
+        if (ireal[1] !=N-1) arrays::deep_swap(M(R, ireal[1]), M(R, N - 1));
+
+	// Taking view of the pieces
+	range R1(0, N-2);
+	range R2(N-2,N);
+	auto a = M(R1, R1);
+	auto c = M(R2, R1);
+        auto b = M(R1, R2);
+        auto d = M(R2, R2);
+       
+	// aB'
+        //blas::gemm(1.0, a, Bprime, 0.0, aBprime);
+	matrix_type aBprime = a * Bprime;
+        matrix_type cBprime = c * Bprime;
+        matrix_type Cprimeb = Cprime * b;
+	matrix_type Cprime_a_Bprime = Cprime * aBprime;
+
+	auto det_ratio = arrays::determinant(d) * arrays::determinant(Dprime - Cprime_a_Bprime + Cprimeb * inverse(d) * cBprime);
+        return det_ratio; 
+      }
+
       //------------------------------------------------------------------------------------------
-      private:
-      void complete_change_col_row_and_insert() = delete; // not implemented yet
-*/
+      
+    value_type onlytry_change_col_row_insert(size_t i0, size_t j0, x_type x0, y_type y0, x_type x1, y_type y1) {
+        TRIQS_ASSERT(last_try == NoTry);
+
+    TRIQS_ASSERT(last_try == NoTry);
+        TRIQS_ASSERT (N>=1);
+	// FIXME Other checks
+
+	if (N==1) return (f(x0,y0)*f(x1,y1) - f(x0,y1)*f(x1,y0))*mat_inv(0,0);
+
+	std::array<x_type,2> x{x0, x1};
+	std::array<y_type,2> y{y0, y1};
+
+	int ireal = row_num[i0];
+	int jreal = col_num[j0];
+
+	auto x_vals = x_values;
+	auto y_vals = y_values;
+
+        x_vals[ireal] = x_values[N-1];
+        y_vals[jreal] = y_values[N-1];
+
+	//-------------------
+	matrix_type Cprime(2,N-1), Bprime(N-1,2), Dprime(2,2);
+
+        // Compute the new column and row 
+        for (long i = 0; i < N - 1; i++) { 
+	  for (int j = 0; j < 2; j++) {
+            Bprime(i,j) = f(x_vals[i], y[j]);
+            Cprime(j,i) = f(x[j], y_vals[i]);
+	  }
+        }
+
+	for (int i = 0; i < 2; i++) {
+	  for (int j = 0; j < 2; j++) {
+	    Dprime(i,j) = f(x[i],y[j]); 
+	  }
+	}
+
+	range R(0, N);
+	matrix_type M = mat_inv(R, R);
+        if (jreal !=N-1) arrays::deep_swap(M(jreal, R), M(N - 1, R));
+        if (ireal !=N-1) arrays::deep_swap(M(R, ireal), M(R, N - 1));
+
+	// Taking view of the pieces
+	range R1(0, N-1);
+	range R2(N-1,N);
+	auto a = M(R1, R1);
+	auto c = M(R2, R1);
+        auto b = M(R1, R2);
+        auto d = M(N-1, N-1);
+       
+	// aB'
+        //blas::gemm(1.0, a, Bprime, 0.0, aBprime);
+	matrix_type aBprime = a * Bprime;
+        matrix_type cBprime = c * Bprime;
+        matrix_type Cprimeb = Cprime * b;
+	matrix_type Cprime_a_Bprime = Cprime * aBprime;
+
+	auto det_ratio = d * arrays::determinant(Dprime - Cprime_a_Bprime + Cprimeb * cBprime / d);
+        return det_ratio; 
+      }
+
+    value_type onlytry_change_col_row_remove(size_t i0, size_t j0, x_type x0, y_type y0, size_t i1, size_t j1) {
+        TRIQS_ASSERT(last_try == NoTry);
+        TRIQS_ASSERT (N>=2);
+	// FIXME Other checks
+
+	std::array<size_t,2> ireal{row_num[i0], row_num[i1]};
+	std::array<size_t,2> jreal{col_num[j0], col_num[j1]};
+
+	auto x_vals = x_values;
+	auto y_vals = y_values;
+
+	range R(0, N);
+	matrix_type M = mat_inv(R, R);
+        if (jreal[0] !=N-2) {
+	  arrays::deep_swap(M(jreal[0], R), M(N - 2, R));
+	  std::swap(y_vals[jreal[0]], y_vals[N-2]);
+	  if (jreal[1] == N-2) jreal[1] = jreal[0];
+	}
+        if (ireal[0] !=N-2) {
+	  arrays::deep_swap(M(R, ireal[0]), M(R, N - 2));
+	  std::swap(x_vals[ireal[0]], x_vals[N-2]);
+	  if (ireal[1] == N-2) ireal[1] = ireal[0];
+	}
+
+        if (jreal[1] !=N-1) {
+	  arrays::deep_swap(M(jreal[1], R), M(N - 1, R));
+	  std::swap(y_vals[jreal[1]], y_vals[N-1]);
+	}
+        if (ireal[1] !=N-1) {
+	  arrays::deep_swap(M(R, ireal[1]), M(R, N - 1));
+	  std::swap(x_vals[ireal[1]], x_vals[N-1]);
+	}
+
+	// Taking view of the pieces
+	range R1(0, N-2);
+	range R2(N-2,N);
+	auto a = M(R1, R1);
+	auto c = M(R2, R1);
+        auto b = M(R1, R2);
+        auto d = M(R2, R2);
+      
+	// -----------------------
+	matrix_type Cprime(1, N-2), Bprime(N-2, 1);
+
+        // Compute the new column and row 
+        for (long i = 0; i < N - 2; i++) { 
+          Bprime(i,0) = f(x_vals[i], y0);
+          Cprime(0,i) = f(x0, y_vals[i]);
+        }
+
+	auto Dprime = f(x0, y0);
+
+	// aB'
+        //blas::gemm(1.0, a, Bprime, 0.0, aBprime);
+	matrix_type aBprime = a * Bprime;
+        matrix_type cBprime = c * Bprime;
+        matrix_type Cprimeb = Cprime * b;
+	matrix_type Cprime_a_Bprime = Cprime * aBprime;
+
+	auto det_ratio = arrays::determinant(d) * (Dprime - Cprime_a_Bprime(0,0) + (Cprimeb * inverse(d) * cBprime)(0,0));
+        newsign      = ((i1 + j1) % 2 == 0 ? sign : -sign);
+        return det_ratio * (newsign * sign); 
+      }
+
+
       //------------------------------------------------------------------------------------------
       public:
       /**

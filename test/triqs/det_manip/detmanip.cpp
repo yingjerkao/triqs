@@ -54,7 +54,7 @@ class DetTest : public ::testing::Test {
   //---------------------
   // Check that d is consistent with rebuilding a det from X and Y.
   // throws if not ok.
-  void check(d_t &d, double detratio, std::vector<double> const &X, std::vector<double> const &Y) {
+  void check(bool do_complete, d_t &d, double detratio, std::vector<double> const &X, std::vector<double> const &Y) {
 
     auto d2   = d_t{fun{}, X, Y};
     auto det1 = d.determinant();
@@ -63,16 +63,23 @@ class DetTest : public ::testing::Test {
       return;
     }
 
-    d.complete_operation();
-
-    auto det       = d.determinant();
+    typename d_t::value_type det;
+    if (do_complete) {
+      d.complete_operation();
+      det = d.determinant();
+    }
+    else det = det1 * detratio;
+    
     auto det2      = d2.determinant();
-    auto det_check = 1 / determinant(d.inverse_matrix());
 
     if (std::abs(detratio - det / det1) > precision) TRIQS_RUNTIME_ERROR << "detratio incorrect : " << detratio << "  " << det / det1;
     if (std::abs(det - det2) > precision) TRIQS_RUNTIME_ERROR << "Det != d2 : " << det << "  " << det2;
-    if (std::abs(det - det_check) > precision) TRIQS_RUNTIME_ERROR << "Det != det_check : " << det << "  " << det_check;
-    triqs::arrays::assert_all_close(make_matrix(inverse(d.matrix())), d.inverse_matrix(), precision, true);
+    
+    if (do_complete){  
+     auto det_check = 1 / determinant(d.inverse_matrix());
+     if (std::abs(det - det_check) > precision) TRIQS_RUNTIME_ERROR << "Det != det_check : " << det << "  " << det_check;
+     triqs::arrays::assert_all_close(make_matrix(inverse(d.matrix())), d.inverse_matrix(), precision, true);
+   }
   }
 
   // -------- data ----------
@@ -109,18 +116,51 @@ TEST_F(DetTest, ChangeRowCol) {
         auto detratio = d.try_change_col_row(i0, j0, x, y);
 
         // check
-        check(d, detratio, X, Y);
+        check(true, d, detratio, X, Y);
       }
   }
   std::cerr << std::endl;
 }
+
+// ------------ change_col_row -------------
+
+TEST_F(DetTest, ChangeRowColOnly) {
+
+  std::cerr << "N = ";
+  for (int N = 1; N < 9; N++) {
+    std::cerr << N << " ";
+    for (int i0 = N-1; i0 >=0; i0--)
+      for (int j0 = N-1; j0 >=0; j0--) {
+        //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
+
+        // reset X, Y at proper dimensions
+        reset_XY(N);
+
+        // Make a det with X and Y
+        auto d = d_t{fun{}, X, Y};
+
+        // Pick up the x, and y , i0, j0  : position of the change
+        auto x = dis(gen), y = dis(gen);
+        X[i0] = x;
+        Y[j0] = y;
+
+        // the operation to check
+        auto detratio = d.onlytry_change_col_row(i0, j0, x, y);
+
+        // check
+        check(false, d, detratio, X, Y);
+      }
+  }
+  std::cerr << std::endl;
+}
+
 
 // ------------ change_2col_2row -------------
 
 TEST_F(DetTest, Change2Row2Col) {
 
   std::cerr << "N = ";
-  for (int N = 1; N < 9; N++) {
+  for (int N = 3; N < 9; N++) {
     std::cerr << N << " ";
     for (int i0 = 0; i0 < N; i0++)
       for (int j0 = 0; j0 < N; j0++)
@@ -138,19 +178,24 @@ TEST_F(DetTest, Change2Row2Col) {
 
             // Pick up the x, and y , i0, j0  : position of the change
             auto x0 = dis(gen), y0 = dis(gen);
+            //X[1] = x0;
+            //Y[1] = y0;
             X[i0] = x0;
             Y[j0] = y0;
             // Same for i1 and j1
             auto x1 = dis(gen), y1 = dis(gen);
+            //X[2] = x1;
+            //Y[2] = y1;
             X[i1] = x1;
             Y[j1] = y1;
 
             // the operation to check
             auto detratio =
-               d.try_change_col_row(std::vector<int>{i0, i1}, std::vector<int>{j0, j1}, std::vector<double>{x0, x1}, std::vector<double>{y0, y1});
+               //d.onlytry_change_2cols_2rows(std::vector<int>{1,2}, std::vector<int>{1,2}, std::vector<double>{x0, x1}, std::vector<double>{y0, y1});
+               d.onlytry_change_2cols_2rows(std::vector<int>{i0, i1}, std::vector<int>{j0, j1}, std::vector<double>{x0, x1}, std::vector<double>{y0, y1});
 
             // check
-            check(d, detratio, X, Y);
+            check(false, d, detratio, X, Y);
           }
   }
   std::cerr << std::endl;
@@ -164,13 +209,8 @@ TEST_F(DetTest, ChangeRowColInsert) {
   for (int N = 1; N < 9; N++) {
     std::cerr << N << " ";
     for (int i0 = 0; i0 < N; i0++)
-      for (int j0 = 0; j0 < N; j0++)
-        for (int i1 = 0; i1 < N; i1++)
-          for (int j1 = 0; j1 < N; j1++) {
+      for (int j0 = 0; j0 < N; j0++) {
             //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
-
-            // we don't want i(j)1 to be equal to i(j)0
-            if ((i1 == i0) || (j1 == j0)) continue;
 
             // reset X, Y at proper dimensions
             reset_XY(N);
@@ -189,10 +229,10 @@ TEST_F(DetTest, ChangeRowColInsert) {
             Y.push_back(y1);
 
             // the operation to check
-            auto detratio = d.try_change_col_row_insert(i0, j0, x0, y0, i1, j1, x1, y1);
+            auto detratio = d.onlytry_change_col_row_insert(i0, j0, x0, y0, x1, y1);
 
             // check
-            check(d, detratio, X, Y);
+            check(false, d, detratio, X, Y);
           }
   }
   std::cerr << std::endl;
@@ -203,7 +243,7 @@ TEST_F(DetTest, ChangeRowColInsert) {
 TEST_F(DetTest, ChangeRowColRemove) {
 
   std::cerr << "N = ";
-  for (int N = 1; N < 9; N++) {
+  for (int N = 2; N < 9; N++) {
     std::cerr << N << " ";
     for (int i0 = 0; i0 < N; i0++)
       for (int j0 = 0; j0 < N; j0++)
@@ -228,13 +268,12 @@ TEST_F(DetTest, ChangeRowColRemove) {
             Y.erase(begin(Y) + j1);
 
             // the operation to check
-            auto detratio = d.try_change_col_row_remove(i0, j0, x, y, i1, j1);
+            auto detratio = d.onlytry_change_col_row_remove(i0, j0, x, y, i1, j1);
 
             // check
-            check(d, detratio, X, Y);
+            check(false, d, detratio, X, Y);
           }
   }
   std::cerr << std::endl;
 }
-
 MAKE_MAIN;
