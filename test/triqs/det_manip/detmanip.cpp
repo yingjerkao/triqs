@@ -22,7 +22,7 @@ struct fun {
   }
 };
 
-using d_t              = triqs::det_manip::det_manip<fun>;
+using d_t = triqs::det_manip::det_manip<fun>;
 
 //=================================================================
 // ---------- A simple "Fixture" for det manip test ---------
@@ -30,7 +30,7 @@ using d_t              = triqs::det_manip::det_manip<fun>;
 class DetTest : public ::testing::Test {
 
   const double precision = 1.e-6;
-  
+
   protected:
   void SetUp() override {}
 
@@ -79,7 +79,6 @@ class DetTest : public ::testing::Test {
   std::mt19937 gen; //
   std::uniform_real_distribution<> dis;
   std::vector<double> X, Y;
-
 };
 
 //=================================================================
@@ -95,13 +94,13 @@ TEST_F(DetTest, ChangeRowCol) {
       for (int j0 = 0; j0 < N; j0++) {
         //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
 
-	// reset X, Y at proper dimensions
+        // reset X, Y at proper dimensions
         reset_XY(N);
 
-	// Make a det with X and Y
+        // Make a det with X and Y
         auto d = d_t{fun{}, X, Y};
 
-	// Pick up the x, and y , i0, j0  : position of the change
+        // Pick up the x, and y , i0, j0  : position of the change
         auto x = dis(gen), y = dis(gen);
         X[i0] = x;
         Y[j0] = y;
@@ -116,6 +115,126 @@ TEST_F(DetTest, ChangeRowCol) {
   std::cerr << std::endl;
 }
 
+// ------------ change_2col_2row -------------
 
+TEST_F(DetTest, Change2Row2Col) {
+
+  std::cerr << "N = ";
+  for (int N = 1; N < 9; N++) {
+    std::cerr << N << " ";
+    for (int i0 = 0; i0 < N; i0++)
+      for (int j0 = 0; j0 < N; j0++)
+        for (int i1 = 0; i1 < N; i1++)
+          for (int j1 = 0; j1 < N; j1++) {
+            //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
+            // we don't want i(j)1 to be equal to i(j)0
+            if ((i1 == i0) || (j1 == j0)) continue;
+
+            // reset X, Y at proper dimensions
+            reset_XY(N);
+
+            // Make a det with X and Y
+            auto d = d_t{fun{}, X, Y};
+
+            // Pick up the x, and y , i0, j0  : position of the change
+            auto x0 = dis(gen), y0 = dis(gen);
+            X[i0] = x0;
+            Y[j0] = y0;
+            // Same for i1 and j1
+            auto x1 = dis(gen), y1 = dis(gen);
+            X[i1] = x1;
+            Y[j1] = y1;
+
+            // the operation to check
+            auto detratio =
+               d.try_change_col_row(std::vector<int>{i0, i1}, std::vector<int>{j0, j1}, std::vector<double>{x0, x1}, std::vector<double>{y0, y1});
+
+            // check
+            check(d, detratio, X, Y);
+          }
+  }
+  std::cerr << std::endl;
+}
+
+// ------------ change_col_row_insert -------------
+
+TEST_F(DetTest, ChangeRowColInsert) {
+
+  std::cerr << "N = ";
+  for (int N = 1; N < 9; N++) {
+    std::cerr << N << " ";
+    for (int i0 = 0; i0 < N; i0++)
+      for (int j0 = 0; j0 < N; j0++)
+        for (int i1 = 0; i1 < N; i1++)
+          for (int j1 = 0; j1 < N; j1++) {
+            //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
+
+            // we don't want i(j)1 to be equal to i(j)0
+            if ((i1 == i0) || (j1 == j0)) continue;
+
+            // reset X, Y at proper dimensions
+            reset_XY(N);
+
+            // Make a det with X and Y
+            auto d = d_t{fun{}, X, Y};
+
+            // Pick up the x, and y , i0, j0  : position of the change
+            auto x0 = dis(gen), y0 = dis(gen);
+            X[i0] = x0;
+            Y[j0] = y0;
+
+            // Same for i1 and j1
+            auto x1 = dis(gen), y1 = dis(gen);
+            X.push_back(x1);
+            Y.push_back(y1);
+
+            // the operation to check
+            auto detratio = d.try_change_col_row_insert(i0, j0, x0, y0, i1, j1, x1, y1);
+
+            // check
+            check(d, detratio, X, Y);
+          }
+  }
+  std::cerr << std::endl;
+}
+
+// ------------ change_col_row_remove -------------
+
+TEST_F(DetTest, ChangeRowColRemove) {
+
+  std::cerr << "N = ";
+  for (int N = 1; N < 9; N++) {
+    std::cerr << N << " ";
+    for (int i0 = 0; i0 < N; i0++)
+      for (int j0 = 0; j0 < N; j0++)
+        for (int i1 = 0; i1 < N; i1++)
+          for (int j1 = 0; j1 < N; j1++) {
+            //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
+
+            if ((i1 == i0) || (j1 == j0)) continue;
+
+            // reset X, Y at proper dimensions
+            reset_XY(N);
+
+            // Make a det with X and Y
+            auto d = d_t{fun{}, X, Y};
+
+            // Pick up the x, and y , i0, j0  : position of the change
+            auto x = dis(gen), y = dis(gen);
+            X[i0] = x;
+            Y[j0] = y;
+
+            X.erase(begin(X) + i1);
+            Y.erase(begin(Y) + j1);
+
+            // the operation to check
+            auto detratio = d.try_change_col_row_remove(i0, j0, x, y, i1, j1);
+
+            // check
+            check(d, detratio, X, Y);
+          }
+  }
+  std::cerr << std::endl;
+}
 
 MAKE_MAIN;

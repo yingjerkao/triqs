@@ -959,6 +959,18 @@ namespace triqs {
       }
 
       //------------------------------------------------------------------------------------------
+      
+      // swap two lines in matrix and update permutation
+      void _swap_rows(long i, long j) { 
+        
+
+      }
+      
+      void _swap_cols(long i, long j) { 
+	
+
+      }
+
       public:
       /**
      * Consider the change the row i and column j and the corresponding x and y
@@ -981,27 +993,35 @@ namespace triqs {
         w1.x     = x;
         w1.y     = y;
 
-        // Compute the col B.
-        for (size_t i = 0; i < N; i++) { // MC :  delta_x, MB : delta_y
-          w1.MC(i) = f(x_values[i], y) - f(x_values[i], y_values[w1.jreal]);
-          w1.MB(i) = f(x, y_values[i]) - f(x_values[w1.ireal], y_values[i]);
+	 // FAUX 
+        // Compute the new column and row 
+        for (long i = 0; i < N - 1; i++) { 
+          w1.Cprime(i) = f(x_values[i], y);
+          w1.Bprime(i) = f(x, y_values[i]);
         }
-        w1.MC(w1.ireal) = f(x, y) - f(x_values[w1.ireal], y_values[w1.jreal]);
-        w1.MB(w1.jreal) = 0;
+        w1.Cprime(w1.ireal) = f(x_values[N-1], y);
+        w1.Bprime(w1.jreal) = f(x, y_values[N-1]);
+        auto Dprime = f(x, y);
 
-        range R(0, N);
-        // C : X, B : Y
-        //w1.C(R) = mat_inv(R,R) * w1.MC(R);// OPTIMIZE BELOW
-        blas::gemv(1.0, mat_inv(R, R), w1.MC(R), 0.0, w1.C(R));
-        //w1.B(R) = mat_inv(R,R).transpose() * w1.MB(R); // OPTIMIZE BELOW
-        blas::gemv(1.0, mat_inv(R, R).transpose(), w1.MB(R), 0.0, w1.B(R));
+	// swap to put M in the correct form {{a b}, {c, d}}
+	_swap_rows(i, N - 1);
+	_swap_cols(j, N - 1);
+       
+	// Taking view of the pieces
+	auto a = mat_inv(R1, R1);
+	auto c = mat_inv(N-1, R1);
+        auto b = mat_inv(R1, N-1);
+        auto d = mat_inv(N-1, N-1);
+        
+	// aB'
+        blas::gemv(1.0, a, w1.Bprime(R1), 0.0, w1.aBprime(R1));
+        
+        auto cBprime = arrays::dot(c, w1.Bprime(R1));
+        auto Cprimeb = arrays::dot(w1.Cprime(R1), b);
+	auto Cprime_a_Bprime = arrays::dot(w1.Cprime(R1), w1.aBprime(R1));
 
-        // compute the det_ratio
-        auto Xn        = w1.C(w1.jreal);
-        auto Yn        = w1.B(w1.ireal);
-        auto Z         = arrays::dot(w1.MB(R), w1.C(R));
-        auto Mnn       = mat_inv(w1.jreal, w1.ireal);
-        auto det_ratio = (1 + Xn) * (1 + Yn) - Mnn * Z;
+	auto det_ratio = d * ( Dprime - Cprime_a_Bprime + Cprimeb * (1.0/d) * cBprime);
+
         w1.ksi         = det_ratio;
         newdet         = det * det_ratio;
         newsign        = sign;
