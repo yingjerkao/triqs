@@ -67,19 +67,19 @@ class DetTest : public ::testing::Test {
     if (do_complete) {
       d.complete_operation();
       det = d.determinant();
-    }
-    else det = det1 * detratio;
-    
-    auto det2      = d2.determinant();
+    } else
+      det = det1 * detratio;
+
+    auto det2 = d2.determinant();
 
     if (std::abs(detratio - det / det1) > precision) TRIQS_RUNTIME_ERROR << "detratio incorrect : " << detratio << "  " << det / det1;
     if (std::abs(det - det2) > precision) TRIQS_RUNTIME_ERROR << "Det != d2 : " << det << "  " << det2;
-    
-    if (do_complete){  
-     auto det_check = 1 / determinant(d.inverse_matrix());
-     if (std::abs(det - det_check) > precision) TRIQS_RUNTIME_ERROR << "Det != det_check : " << det << "  " << det_check;
-     triqs::arrays::assert_all_close(make_matrix(inverse(d.matrix())), d.inverse_matrix(), precision, true);
-   }
+
+    if (do_complete) {
+      auto det_check = 1 / determinant(d.inverse_matrix());
+      if (std::abs(det - det_check) > precision) TRIQS_RUNTIME_ERROR << "Det != det_check : " << det << "  " << det_check;
+      triqs::arrays::assert_all_close(make_matrix(inverse(d.matrix())), d.inverse_matrix(), precision, true);
+    }
   }
 
   // -------- data ----------
@@ -129,8 +129,8 @@ TEST_F(DetTest, ChangeRowColOnly) {
   std::cerr << "N = ";
   for (int N = 1; N < 9; N++) {
     std::cerr << N << " ";
-    for (int i0 = N-1; i0 >=0; i0--)
-      for (int j0 = N-1; j0 >=0; j0--) {
+    for (int i0 = N - 1; i0 >= 0; i0--)
+      for (int j0 = N - 1; j0 >= 0; j0--) {
         //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
 
         // reset X, Y at proper dimensions
@@ -153,7 +153,6 @@ TEST_F(DetTest, ChangeRowColOnly) {
   }
   std::cerr << std::endl;
 }
-
 
 // ------------ change_2col_2row -------------
 
@@ -186,8 +185,8 @@ TEST_F(DetTest, Change2Row2Col) {
             Y[j1] = y1;
 
             // the operation to check
-            auto detratio =
-               d.onlytry_change_2cols_2rows(std::vector<int>{i0, i1}, std::vector<int>{j0, j1}, std::vector<double>{x0, x1}, std::vector<double>{y0, y1});
+            auto detratio = d.onlytry_change_2cols_2rows(std::vector<int>{i0, i1}, std::vector<int>{j0, j1}, std::vector<double>{x0, x1},
+                                                         std::vector<double>{y0, y1});
 
             // check
             check(false, d, detratio, X, Y);
@@ -205,30 +204,30 @@ TEST_F(DetTest, ChangeRowColInsert) {
     std::cerr << N << " ";
     for (int i0 = 0; i0 < N; i0++)
       for (int j0 = 0; j0 < N; j0++) {
-            //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
+        //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
 
-            // reset X, Y at proper dimensions
-            reset_XY(N);
+        // reset X, Y at proper dimensions
+        reset_XY(N);
 
-            // Make a det with X and Y
-            auto d = d_t{fun{}, X, Y};
+        // Make a det with X and Y
+        auto d = d_t{fun{}, X, Y};
 
-            // Pick up the x, and y , i0, j0  : position of the change
-            auto x0 = dis(gen), y0 = dis(gen);
-            X[i0] = x0;
-            Y[j0] = y0;
+        // Pick up the x, and y , i0, j0  : position of the change
+        auto x0 = dis(gen), y0 = dis(gen);
+        X[i0] = x0;
+        Y[j0] = y0;
 
-            // Same for i1 and j1
-            auto x1 = dis(gen), y1 = dis(gen);
-            X.push_back(x1);
-            Y.push_back(y1);
+        // Same for i1 and j1
+        auto x1 = dis(gen), y1 = dis(gen);
+        X.push_back(x1);
+        Y.push_back(y1);
 
-            // the operation to check
-            auto detratio = d.onlytry_change_col_row_insert(i0, j0, x0, y0, x1, y1);
+        // the operation to check
+        auto detratio = d.onlytry_change_col_row_insert(i0, j0, x0, y0, x1, y1);
 
-            // check
-            check(false, d, detratio, X, Y);
-          }
+        // check
+        check(false, d, detratio, X, Y);
+      }
   }
   std::cerr << std::endl;
 }
