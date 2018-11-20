@@ -1105,6 +1105,9 @@ namespace triqs {
         TRIQS_ASSERT(N >= 2);
         // FIXME Other checks
 
+        if (N == 2)
+          return (f(xv[iv[0]], yv[jv[0]]) * f(xv[iv[1]], yv[jv[1]]) - f(xv[iv[0]], yv[jv[1]]) * f(xv[iv[1]], yv[jv[0]])) / this->determinant();
+
         std::vector<int> ireal(2);
         std::vector<int> jreal(2);
         std::vector<x_type> x(2);
@@ -1124,8 +1127,6 @@ namespace triqs {
         jreal[1 - a_col0] = col_num[jv[1]];
         x[1 - a_row0]     = xv[1];
         y[1 - a_col0]     = yv[1];
-
-        if (N == 2) return (f(x[0], y[0]) * f(x[1], y[1]) - f(x[0], y[1]) * f(x[1], y[0])) / this->determinant();
 
         auto x_vals = x_values;
         auto y_vals = y_values;

@@ -166,7 +166,7 @@ TEST_F(DetTest, Change2Row2Col) {
       for (int j0 = 0; j0 < N; j0++)
         for (int i1 = 0; i1 < N; i1++)
           for (int j1 = 0; j1 < N; j1++) {
-            //std::cerr << "------------------------------\n i0 = " << i0 << "j0 = " << j0 << std::endl;
+            //TRIQS_PRINT (i0); TRIQS_PRINT (i1); TRIQS_PRINT (j0); TRIQS_PRINT (j1);
             // we don't want i(j)1 to be equal to i(j)0
             if ((i1 == i0) || (j1 == j0)) continue;
 
@@ -178,20 +178,15 @@ TEST_F(DetTest, Change2Row2Col) {
 
             // Pick up the x, and y , i0, j0  : position of the change
             auto x0 = dis(gen), y0 = dis(gen);
-            //X[1] = x0;
-            //Y[1] = y0;
             X[i0] = x0;
             Y[j0] = y0;
             // Same for i1 and j1
             auto x1 = dis(gen), y1 = dis(gen);
-            //X[2] = x1;
-            //Y[2] = y1;
             X[i1] = x1;
             Y[j1] = y1;
 
             // the operation to check
             auto detratio =
-               //d.onlytry_change_2cols_2rows(std::vector<int>{1,2}, std::vector<int>{1,2}, std::vector<double>{x0, x1}, std::vector<double>{y0, y1});
                d.onlytry_change_2cols_2rows(std::vector<int>{i0, i1}, std::vector<int>{j0, j1}, std::vector<double>{x0, x1}, std::vector<double>{y0, y1});
 
             // check
