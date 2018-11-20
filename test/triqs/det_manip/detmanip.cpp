@@ -160,7 +160,7 @@ TEST_F(DetTest, ChangeRowColOnly) {
 TEST_F(DetTest, Change2Row2Col) {
 
   std::cerr << "N = ";
-  for (int N = 3; N < 9; N++) {
+  for (int N = 2; N < 9; N++) {
     std::cerr << N << " ";
     for (int i0 = 0; i0 < N; i0++)
       for (int j0 = 0; j0 < N; j0++)

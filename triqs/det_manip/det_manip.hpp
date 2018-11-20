@@ -1102,12 +1102,8 @@ namespace triqs {
 
     value_type onlytry_change_2cols_2rows(std::vector<int> const & iv, std::vector<int> const & jv, std::vector<x_type> const &xv, std::vector<y_type> const &yv) {
         TRIQS_ASSERT(last_try == NoTry);
-        TRIQS_ASSERT (N>2); //FIXME
+        TRIQS_ASSERT (N>=2); 
 	// FIXME Other checks
-
-
-	//if (N==2) return (f(xv[0],yv[0])*f(xv[1],yv[1]) - f(xv[0],yv[1])*f(xv[1],yv[0])) * 
-	//  (mat_inv(0,0) * mat_inv(1,1) - mat_inv(0,1) * mat_inv(1,0));
 
 	std::vector<int> ireal(2);
 	std::vector<int> jreal(2);
@@ -1128,6 +1124,9 @@ namespace triqs {
         jreal[1 - a_col0] = col_num[jv[1]];
         x[1 - a_row0]     = xv[1];
         y[1 - a_col0]     = yv[1];
+
+	if (N==2) 
+	  return (f(x[0],y[0])*f(x[1],y[1]) - f(x[0],y[1])*f(x[1],y[0])) / this->determinant(); 
 
 	auto x_vals = x_values;
 	auto y_vals = y_values;
