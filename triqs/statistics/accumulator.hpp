@@ -22,9 +22,11 @@
  ******************************************************************************/
 #pragma once
 #include <type_traits>
+#include <optional>
 #include <vector>
+#include <triqs/clef/clef.hpp>
 #include <triqs/h5/h5_serialize.hpp>
-#include <triqs/utility/itertools.hpp>
+// #include <triqs/utility/itertools.hpp>
 #include <triqs/mpi/vector.hpp>
 
 namespace triqs {
@@ -150,6 +152,8 @@ namespace triqs::stat {
       }
 
       void advance() {
+        using triqs::arrays::conj_r;
+
         if (n_bins() == 0) return;
         ++count;
         // go up in n as long as the acc_count becomes full and add the acc in the

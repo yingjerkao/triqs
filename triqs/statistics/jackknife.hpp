@@ -22,6 +22,8 @@
  ******************************************************************************/
 #pragma once
 #include <type_traits>
+#include <triqs/arrays.hpp>
+#include <triqs/arrays/math_functions.hpp>
 
 namespace triqs::stat {
 
@@ -69,6 +71,7 @@ namespace triqs::stat {
 
       auto Xj = [&jac, &f, _seq = std::index_sequence_for<A...>()](long i) { return details::jack_impl(_seq, i, f, jac); };
 
+      using triqs::arrays::conj_r;
       // FIXME : use the better sum technique
       auto sum = make_regular(f(a[0]...));
       using T  = decltype(sum);
