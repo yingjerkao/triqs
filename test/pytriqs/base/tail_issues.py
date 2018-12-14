@@ -137,8 +137,8 @@ class test_tail_issues(unittest.TestCase):
         # Resymmetrize gt
         gt.data[:,0,1] = gt.data[:,1,0].conjugate()
 
-        # We should not be allowed to call a fourier transform on the noisy imaginary Green function
-        self.assertRaises(Exception, make_gf_from_fourier, gt)
+        # WE NOW ALWAYS ASSUME VANISHING MOMENTS IF NOISY GF DETECTED # We should not be allowed to call a fourier transform on the noisy imaginary Green function
+        # self.assertRaises(Exception, make_gf_from_fourier, gt)
 
         # Instead we will go through a legendre basis to filter the noise
         gl = fit_legendre(gt)
