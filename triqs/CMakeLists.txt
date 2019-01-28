@@ -26,9 +26,9 @@ if((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND ("${CMAKE_CXX_COMPILER_ID}" MATCH
  target_compile_options(triqs PUBLIC -stdlib=libc++)
 endif()
 
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
- target_compile_definitions(triqs PUBLIC TRIQS_WORKAROUND_INTEL_COMPILER_BUGS BOOST_MATH_DISABLE_STD_FPCLASSIFY)
-endif() 
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  target_compile_options(triqs PUBLIC -fconcepts)
+endif()
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
  target_compile_definitions(triqs PRIVATE TRIQS_DEBUG)
@@ -180,8 +180,8 @@ execute_process(COMMAND ${HDF5_DIFF_EXECUTABLE} --version OUTPUT_VARIABLE diff_o
 string(REGEX MATCHALL "[0-9]+.[0-9]+.[0-9]+" HDF5_VERSION "${diff_output}")
 message(STATUS "hdf5 version: ${HDF5_VERSION}")
 if (PythonSupport)
- if (NOT "${CPP2PY_PYTHON_H5PY_HDF5VERSION}" STREQUAL "${HDF5_VERSION}")
- message(FATAL_ERROR "The HDF5 version of the h5py (${CPP2PY_PYTHON_H5PY_HDF5VERSION}) is different from the hdf5 library found for C++ (${HDF5_VERSION}). You MUST have the same version.")
+ if (NOT "${PYTHON_H5PY_HDF5VERSION}" STREQUAL "${HDF5_VERSION}")
+ message(FATAL_ERROR "The HDF5 version of the h5py (${PYTHON_H5PY_HDF5VERSION}) is different from the hdf5 library found for C++ (${HDF5_VERSION}). You MUST have the same version.")
  endif()
 endif()
 

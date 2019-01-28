@@ -41,16 +41,11 @@ for (int i = 0; i < osxPlatforms.size(); i++) {
     stage("osx-$platform") { timeout(time: 1, unit: 'HOURS') {
       def workDir = pwd()
       def tmpDir = pwd(tmp:true)
-      def cpp2pyDir = "$tmpDir/cpp2py"
       def buildDir = "$tmpDir/build"
       /* install real branches in a fixed predictable place so apps can find them */
       def installDir = keepInstall ? "${env.HOME}/install/${projectName}/${env.BRANCH_NAME}/${platform}" : "$tmpDir/install"
 
       checkout scm
-      dir(cpp2pyDir) {
-        /* should we make this a proper submodule? */
-        git(url: 'https://github.com/TRIQS/cpp2py', branch: 'master')
-      }
 
       dir(buildDir) { withEnv(platformEnv[1].collect { it.replace('\$BREW', env.BREW) } + [
           "PATH=$installDir/bin:${env.BREW}/bin:/usr/bin:/bin:/usr/sbin",
@@ -62,11 +57,6 @@ for (int i = 0; i < osxPlatforms.size(); i++) {
         sh """#!/bin/bash -ex
           virtualenv $installDir
           pip install --no-binary=h5py,mpi4py -U -r $workDir/packaging/requirements.txt
-
-          cmake $cpp2pyDir -DCMAKE_INSTALL_PREFIX=$installDir
-          make -j3
-          make install
-          rm -rf *
         """
 
         sh "cmake $workDir -DCMAKE_INSTALL_PREFIX=$installDir"
@@ -87,12 +77,13 @@ try {
   parallel platforms
   if (keepInstall) {
     node("docker") {
-      stage("publish") { timeout(time: 1, unit: 'HOURS') {
+      stage("publish") { timeout(time: 10, unit: 'MINUTES') {
         def commit = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
+        def release = sh(returnStdout: true, script: "git describe --exact-match HEAD || true").trim()
         def workDir = pwd()
         dir("$workDir/gh-pages") {
-        def subdir = "${projectName}/${env.BRANCH_NAME}"
-        git(url: "ssh://git@github.com/TRIQS/TRIQS.github.io.git", branch: "master", credentialsId: "ssh", changelog: false)
+          def subdir = "${projectName}/${env.BRANCH_NAME}"
+          git(url: "ssh://git@github.com/TRIQS/TRIQS.github.io.git", branch: "master", credentialsId: "ssh", changelog: false)
           sh "rm -rf ${subdir}"
           docker.image("flatironinstitute/${projectName}:${env.BRANCH_NAME}-${documentationPlatform}").inside() {
             sh "cp -rp \$INSTALL/share/doc/${projectName} ${subdir}"
@@ -104,7 +95,7 @@ try {
           // note: credentials used above don't work (need JENKINS-28335)
           sh "git push origin master || { git pull --rebase origin master && git push origin master ; }"
         }
-        dir("$workDir/docker") { try {
+        if (release) { dir("$workDir/docker") { try {
           git(url: "ssh://git@github.com/TRIQS/docker.git", branch: env.BRANCH_NAME, credentialsId: "ssh", changelog: false)
           sh "echo '160000 commit ${commit}\t${projectName}' | git update-index --index-info"
           sh """
@@ -114,7 +105,7 @@ try {
           sh "git push origin ${env.BRANCH_NAME} || { git pull --rebase origin ${env.BRANCH_NAME} && git push origin ${env.BRANCH_NAME} ; }"
         } catch (err) {
           echo "Failed to update docker repo"
-        } }
+        } } }
       } }
     }
   }
