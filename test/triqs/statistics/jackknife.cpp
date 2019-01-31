@@ -9,9 +9,8 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/normal_distribution.hpp>
 using namespace triqs::stat;
-using namespace triqs;
 using namespace triqs::gfs;
-using namespace boost;
+using namespace triqs::arrays;
 using namespace triqs::utility;
 
 int seed = 1567;
