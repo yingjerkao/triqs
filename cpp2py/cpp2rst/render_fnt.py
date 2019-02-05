@@ -47,7 +47,7 @@ def render_note(name, doc_elem) :
 
 def render_fig(doc_elem) : 
     figs = doc_elem['figure']
-    fig = figs.split(":") if figs else None, None
+    fig = figs.split(":") if figs else (None, None)
     if figs:
         return """
 .. figure:: {fig[0]}
@@ -59,13 +59,16 @@ def render_fig(doc_elem) :
 #------------------------------------
 def render_fnt(f_name, doc_methods, parent_class, f_overloads):
     R= rst_start
+
+    parent_cls_fully_qualified = (CL.fully_qualified(parent_class.referenced) + "::") if parent_class else ""
+    f_name_full = parent_cls_fully_qualified + f_name
     R += """
 .. _{class_rst_ref}:
 
-{f_name}
-""".format(f_name = f_name, class_rst_ref = ((parent_class.spelling + '_') if parent_class else '' )+ f_name)
+{f_name_full}
+""".format(f_name_full = f_name_full, class_rst_ref = ((parent_class.spelling + '_') if parent_class else '' )+ f_name)
 
-    R += '=' * (len(f_name)+0) + '\n' + """
+    R += '=' * (len(f_name_full)+0) + '\n' + """
 **Synopsis**:
 
 .. code-block:: c
@@ -92,7 +95,10 @@ def render_fnt(f_name, doc_methods, parent_class, f_overloads):
         R += '\n\n' 
 
     # any example from the overloads
+    for d in doc_methods:
+        print d.elements
     example_file_name = reduce(lambda x,y : x or y, [ d.elements['example'] for d in doc_methods] + [f_name], '')  
+    print example_file_name
     code,d1,d2, s,e = prepare_example(example_file_name, 4)
     if code:
         R += """
@@ -118,30 +124,27 @@ def render_cls(cls, all_m, all_friend_functions, doc_methods, doc_class, cls_doc
     
     # include
     incl = doc_elem['include']
-    if incl:
-        R +="""
-.. code-block:: c
-
-    #include <{incl}>
-        """.format(incl = incl.strip())
 
     # class header
+    cls_fully_qualified = CL.fully_qualified(cls.referenced)
     R +="""
 .. _{cls.spelling}:
 
-{cls.spelling}
+{cls_fully_qualified}
 {separator}
 
-{cls_doc.brief_doc}
-
-{cls_doc.processed_doc}
+Defined in header <*{incl}*>
 
 **Synopsis**:
 
 .. code-block:: c
 
     {templ_synop}class {cls.spelling};
-    """.format(cls = cls, separator = '=' * (len(cls.spelling)+2), templ_synop = make_synopsis_template_decl(cls), cls_doc = cls_doc)
+
+{cls_doc.brief_doc}
+
+{cls_doc.processed_doc}
+    """.format(cls = cls, incl = incl.strip(), separator = '=' * (len(cls_fully_qualified)), templ_synop = make_synopsis_template_decl(cls), cls_doc = cls_doc, cls_fully_qualified = cls_fully_qualified)
 
     # doc, note, warning, figure
     R += replace_latex(doc_class.processed_doc)
@@ -153,17 +156,16 @@ def render_cls(cls, all_m, all_friend_functions, doc_methods, doc_class, cls_doc
     c_members = list(CL.get_members(cls, True)) 
     if len(c_members) > 0:
         R += head('Public members') 
-        R += make_table(['Member','Type','Comment'], [(t.spelling,t.type.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_members])
+        R += make_table([(t.spelling,t.type.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_members])
 
     c_usings = list(CL.get_usings(cls)) 
     if len(c_usings) > 0:
         R += head('Member types') 
-        R += make_table(['Member type','Comment'], [(t.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_usings])
+        R += make_table([(t.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_usings])
 
     if len(all_m) > 0:
         R += head('Member functions') 
-        R += make_table(['Member function','Comment'], 
-                 [(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), replace_latex(doc_methods[name][0].brief_doc)) for name in all_m])
+        R += make_table([(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), replace_latex(doc_methods[name][0].brief_doc)) for name in all_m])
 
         R += toctree_hidden
         for m_name in all_m:
@@ -171,14 +173,13 @@ def render_cls(cls, all_m, all_friend_functions, doc_methods, doc_class, cls_doc
 
     if len(all_friend_functions) > 0:
         R += head('Non Member functions') 
-        R += make_table(['Non member function','Comment'],
-           [(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), replace_latex(doc_methods[name][0].brief_doc)) for name in all_friend_functions])
+        R += make_table([(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), replace_latex(doc_methods[name][0].brief_doc)) for name in all_friend_functions])
  
         R += toctree_hidden
         for f_name in all_friend_functions:
            R += "    {cls.spelling}/{f_name}\n".format(cls = cls, f_name = f_name)
 
-    code,d1,d2, s,e = prepare_example(cls.spelling, 4)
+    code,d1,d2, s,e = prepare_example(filename = cls.spelling + ".cpp", decal = 4)
     if code is not None:
         R +="""
 Example

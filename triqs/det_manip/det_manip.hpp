@@ -227,6 +227,9 @@ namespace triqs {
      * Like for std::vector, reserve memory for a bigger size.
      * Preserves only the matrix, not the temporary working vectors/matrices, so do NOT use it
      * between a try_XXX and a complete_operation
+     *
+     * @example test.cpp
+     * @param new_size The new size of the reserved memory
      */
       void reserve(size_t new_size) {
         if (new_size <= Nmax) return;

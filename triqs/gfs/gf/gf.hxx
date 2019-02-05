@@ -89,6 +89,11 @@ namespace triqs {
     // ----------------------  gf -----------------------------------------
     /**
    * gf : the main class
+   *
+   * @tparam Var The domain of definition
+   * @tparam Target The target domain
+   *
+   * @include triqs/gfs.hpp
    */
     template <typename Var, typename Target>
     class gf :
@@ -504,7 +509,9 @@ namespace triqs {
       }
 
       //-----------------------------  BOOST Serialization -----------------------------
+      private:
       friend class boost::serialization::access;
+      public:
       /// The serialization as required by Boost
       template <class Archive> void serialize(Archive &ar, const unsigned int version) {
         ar &_data;
@@ -674,6 +681,11 @@ namespace triqs {
     // ----------------------  gf_view -----------------------------------------
     /**
    * gf_view : the main class
+   *
+   * @tparam Var The domain of definition
+   * @tparam Target The target domain
+   *
+   * @include triqs/gfs.hpp
    */
     template <typename Var, typename Target>
     class gf_view :
@@ -1060,7 +1072,9 @@ namespace triqs {
       }
 
       //-----------------------------  BOOST Serialization -----------------------------
+      private:
       friend class boost::serialization::access;
+      public:
       /// The serialization as required by Boost
       template <class Archive> void serialize(Archive &ar, const unsigned int version) {
         ar &_data;
@@ -1230,6 +1244,11 @@ namespace triqs {
     // ----------------------  gf_const_view -----------------------------------------
     /**
    * gf_const_view : the main class
+   *
+   * @tparam Var The domain of definition
+   * @tparam Target The target domain
+   *
+   * @include triqs/gfs.hpp
    */
     template <typename Var, typename Target>
     class gf_const_view :
@@ -1603,7 +1622,9 @@ namespace triqs {
       }
 
       //-----------------------------  BOOST Serialization -----------------------------
+      private:
       friend class boost::serialization::access;
+      public:
       /// The serialization as required by Boost
       template <class Archive> void serialize(Archive &ar, const unsigned int version) {
         ar &_data;

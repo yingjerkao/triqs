@@ -131,9 +131,10 @@ class Cpp2Rst:
             cls_doc = self.process_doc_class(c)
 
             # all methods and constructors
-            all_m = self.regroup_func_by_names(CL.get_methods(c, True)) # True : with inherited ?
             constructors = list(CL.get_constructors(c))
+            all_m = OrderedDict()
             if constructors: all_m['constructor'] = constructors
+            all_m.update(self.regroup_func_by_names(CL.get_methods(c, True))) # True : with inherited ?
 
             # all non member functions
             all_friend_functions = self.regroup_func_by_names(CL.get_friend_functions(c))

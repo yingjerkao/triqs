@@ -45,7 +45,7 @@ The @ MUST BE THE LAST FIELDS
             item, rest= (x + ' ').split(' ',1)
             if item in var_unique:
                 if item not in d:
-                    d[item] = rest
+                    d[item] = rest.strip()
                 else : 
                     print "@%s is present more than once !"%item 
             elif item in var_multi:
