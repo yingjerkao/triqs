@@ -311,6 +311,9 @@ def fully_qualified(c):
             return res + '::' + c.spelling
     return c.spelling
 
+def fully_qualified_name(c) : 
+    return fully_qualified(c.referenced)
+
 def get_namespace_list(node):
     return fully_qualified(node.referenced).split('::')[:-1]
 
