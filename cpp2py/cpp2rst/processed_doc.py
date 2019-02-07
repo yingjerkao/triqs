@@ -35,7 +35,6 @@ def replace_latex(s, escape_slash=False):
      
     """
     if not s : return s
-    print s
     any_math_char = 'A-Za-z0-9{}\[\],;|\(\)=./\/+-_^\'' #any math character
     #matches all expressions starting and ending with any math char, with possibly whitespaces in between
     pattern_1 = '\$(['+any_math_char+']['+any_math_char+' ]*['+any_math_char+']+)\$'
@@ -74,27 +73,30 @@ class ProcessedDoc:
         if not raw_doc : raw_doc = "\n\n" # default value
         
         # Clean *, &&, /// and co.
-        for p in [r"/\*",r"\*/",r"^\s*\*", r'\*\s*\n', r"///", r"//", r"\\brief"] : 
-            doc = re.sub(p,"",raw_doc, flags = re.MULTILINE)
-        
+        doc = raw_doc
+        for p in [r"/\*",r"\*/",r"^\s*\*", r'\*\s*\n', r'\*/\s*$',r"///", r"//", r"\\brief"] : 
+            doc = re.sub(p,"",doc, flags = re.MULTILINE)
+
         # split : the first line is brief, and the rest
-        doc = doc.split('@',1)[0] # Get rid of everything after the first @
-        doc = replace_latex(doc)
-        spl = doc.strip().split('\n',1) 
-        
+        doc2 = doc.split('@',1)[0] # Get rid of everything after the first @
+        doc2 = replace_latex(doc)
+        spl = doc2.strip().split('\n',1) 
         self.brief_doc, self.doc = spl[0], (spl[1] if len(spl)>1 else '') 
 
         # Extract the @XXXX elements with a regex @XXXX YYYY (YYYY can be multiline).
         d = dict( (key, []) for key in self.fields_with_multiple_entry)
         regex = r'@(\w+)\s*([^@]*)'
-        for m in re.finditer(regex, raw_doc, re.DOTALL):
+        for m in re.finditer(regex, doc, re.DOTALL):
             key, val = m.group(1), replace_latex(m.group(2)).strip()
             if key not in self.fields_allowed_in_docs:
-                print "Field %s is not recognized"
+                print "Field %s is not recognized"%key
             if key in self.fields_with_multiple_entry:
-                d[key].append(val.split(' ',1))
+                d[key].append(val)
             else:
                 d[key] = val
         
         self.elements = d
+        #print "####################################"
+        #print d
+        #print "--------------------------------"
 

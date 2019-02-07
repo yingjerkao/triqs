@@ -28,10 +28,19 @@ def escape_lg(s):
     """Escape the > and < in the string, which are special in rst"""
     return s.replace('>','\>').replace('<','\<')
 
-def render_list(item_list):
-    """ Make rst code for a list of items """
-    print 'TEIM LIST', item_list
-    return '\n'.join(" * **%s**: %s\n"%(p,d) for p,d in item_list)
+def render_list(item_list, header):
+    """ 
+       Make rst code for a list of items with  a header
+       It splits the first word in a separate column
+    """
+    if not item_list: return ''
+    head = make_header(header) if header else ''
+    l = [ (x+'   ').split(' ',1) for x in item_list]
+    #f = lambda x : (x+'   ').split(' ',1) #ensure there are always 2 items in the list
+    #for x in item_list:
+    #    print (x+'   ').split(' ',1)
+    print l
+    return head + '\n'.join(" * **%s**: %s\n"%(k,v) for (k,v) in l)
 
 def render_note(s) :
     """ Make rst code for a note. Nothing if empty  """
@@ -162,8 +171,8 @@ def render_fnt(parent_class, f_name, f_overloads):
         if 'warning' in doc_elem:   R += render_warning(doc_elem.pop('warning'))
         if 'figure' in doc_elem:    R += render_fig(doc_elem.pop('figure'))
         if 'return' in doc_elem:    R += make_header('Return value')        + doc_elem.pop('return')
-        if 'tparam' in doc_elem:    R += make_header('Template parameters') + render_list(doc_elem.pop('tparam'))
-        if 'param' in doc_elem:    R += make_header('Parameters') + render_list(doc_elem.pop('param'))
+        if 'tparam' in doc_elem:    R += render_list(doc_elem.pop('tparam'), 'Template parameters')
+        if 'param' in doc_elem:     R += render_list(doc_elem.pop('param'), 'Parameters')
 
     # any example from the overloads
     # Should we TAKE ONLY ONE ????? Error ??
@@ -189,7 +198,7 @@ def render_cls(cls, all_methods, all_friend_functions):
     R= rst_start
     
     # include
-    incl = doc_elem.pop('include', 'XXXX')
+    incl = doc_elem.pop('include', '')
 
     # class header
     cls_name_fully_qualified = CL.fully_qualified_name(cls)
@@ -214,7 +223,7 @@ Defined in header <*{incl}*>
 
     # 
     R += cls_doc.doc
-    if 'tparam' in doc_elem:    R += make_header('Template parameters') + render_list(doc_elem.pop('tparam'))
+    if 'tparam' in doc_elem:    R += render_list(doc_elem.pop('tparam'), 'Template parameters')
     if 'note' in doc_elem :     R += render_note(doc_elem.pop('note'))
     if 'warning' in doc_elem:   R += render_warning(doc_elem.pop('warning'))
     if 'figure' in doc_elem:    R += render_fig(doc_elem.pop('figure'))
@@ -235,7 +244,7 @@ Defined in header <*{incl}*>
     def make_func_list(all_f, header_name):
         R = ''
         if len(all_f) > 0:
-            R += make_header('Member functions') 
+            R += make_header(header_name) 
             R += render_table([(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), f_list[0].processed_doc.brief_doc) for (name, f_list) in all_f.items()])
             R += toctree_hidden
             for f_name in all_f:
