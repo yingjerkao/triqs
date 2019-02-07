@@ -36,7 +36,7 @@ def make_synopsis_template_decl(node) :
 def make_synopsis(m, pdoc, decal):
     #assert not m.tparams, "template functions "
     #try :
-    syn = pdoc.elements['synopsis']
+    syn = pdoc.elements.pop('synopsis', '')
     if syn : return [syn]
     s = " {name} ({args}) {qualif}"
     if hasattr(m, 'result_type') :

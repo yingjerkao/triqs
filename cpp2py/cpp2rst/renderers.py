@@ -1,3 +1,4 @@
+import os, re
 import cpp2py.clang_parser as CL
 from synopsis import make_synopsis_list, make_synopsis_template_decl
 from processed_doc import replace_latex
@@ -29,6 +30,7 @@ def escape_lg(s):
 
 def render_list(item_list):
     """ Make rst code for a list of items """
+    print 'TEIM LIST', item_list
     return '\n'.join(" * **%s**: %s\n"%(p,d) for p,d in item_list)
 
 def render_note(s) :
@@ -37,7 +39,7 @@ def render_note(s) :
 .. note::
     %s"""%(s) if s else ''
 
-def render_warning(note) :
+def render_warning(s) :
     """ Make rst code for a warning. Nothing if empty  """
     return """
 .. warning::
@@ -61,8 +63,7 @@ def render_table(list_of_list):
 #-------------------------------------
 
 def render_fig(figs): 
-    fig = figs.split(":")
-    assert len(fig) == 2, "Syntax error for @figure. It should be @figure filename.cpp LEN" # TODO Check len.
+    fig = figs.split(":", 1)
     return """
 .. figure:: {fig[0]}
    :alt: {fig[1]}
@@ -109,16 +110,14 @@ Example
 {d2}
         """.format(d1 = doc1, d2 = doc2,s = s, e = e, code = code)
  
-   return code, doc1, doc2, s, e
-
 #------------------------------------
 
-def render_fnt(f_name, doc_methods, parent_class, f_overloads):
+def render_fnt(parent_class, f_name, f_overloads):
     """
        Generate the rst page for a function
         
         * f_name : name of the function
-        * doc_methods : ??
+        * overload_docs : ??
         * parent_class : None or the parent class if it is a method
         * f_overloads : a list of WHAT ?
     """
@@ -142,12 +141,16 @@ def render_fnt(f_name, doc_methods, parent_class, f_overloads):
 .. code-block:: c
 
 """
+
+    # TODO  :
+    overload_docs = [ f.processed_doc for f in f_overloads]
+
     # Synopsis
-    R += make_synopsis_list(f_overloads, doc_methods) + '\n\n'
+    R += make_synopsis_list(f_overloads, overload_docs) + '\n\n'
     
     # HOW DO WE GROUP THE OVERLOAD
     # Enumerate all overloads
-    for n, (m,doc) in enumerate(zip(f_overloads, doc_methods)):
+    for n, (m,doc) in enumerate(zip(f_overloads, overload_docs)):
         doc_elem = doc.elements
         
         num = '(%s)'%(n+1) if len(f_overloads)>1 else ''
@@ -155,15 +158,16 @@ def render_fnt(f_name, doc_methods, parent_class, f_overloads):
         R += doc.doc
 
         # TODO which order ?
-        if 'note' in doc_elem :     R += render_note(doc_elem['note'])
-        if 'warning' in doc_elem:   R += render_warning(doc_elem['warning'])
-        if 'figure' in doc_elem:    R += render_fig(doc_elem['figure'])
-        if 'tparam' in doc_elem:    R += make_header('Template parameters') + render_list(doc_elem['tparam'])
-        if 'param'  in doc_elem:    R += make_header('Parameters')          + render_list(doc_elem['param'])
-        if 'return' in doc_elem:    R += make_header('Return value')        + doc_elem['return']
+        if 'note' in doc_elem :     R += render_note(doc_elem.pop('note'))
+        if 'warning' in doc_elem:   R += render_warning(doc_elem.pop('warning'))
+        if 'figure' in doc_elem:    R += render_fig(doc_elem.pop('figure'))
+        if 'return' in doc_elem:    R += make_header('Return value')        + doc_elem.pop('return')
+        if 'tparam' in doc_elem:    R += make_header('Template parameters') + render_list(doc_elem.pop('tparam'))
+        if 'param' in doc_elem:    R += make_header('Parameters') + render_list(doc_elem.pop('param'))
 
     # any example from the overloads
-    example_file_name = reduce(lambda x,y : x or y, [ d.elements['example'] for d in doc_methods] + [f_name], '')  
+    # Should we TAKE ONLY ONE ????? Error ??
+    example_file_name = reduce(lambda x,y : x or y, [ d.elements.pop('example', '') for d in overload_docs], '')  
     R += render_example(example_file_name)
     return R
 
@@ -172,20 +176,20 @@ def render_fnt(f_name, doc_methods, parent_class, f_overloads):
 # Why is all_methods, functoni passed but not members ???
 # Why not do the work here ?
 
-def render_cls(cls, all_methods, all_friend_functions, doc_methods, doc_class, cls_doc) : 
+def render_cls(cls, all_methods, all_friend_functions):
     """
        Generate the rst page for a class
         
         * cls : node for the classf_name : name of the function
         * doc_methods : ??
-        * doc_class : ??
-        * cls_doc : ??
     """
-    doc_elem = doc_class.elements
+   
+    cls_doc = cls.processed_doc
+    doc_elem = cls_doc.elements
     R= rst_start
     
     # include
-    incl = doc_elem['include']
+    incl = doc_elem.pop('include', 'XXXX')
 
     # class header
     cls_name_fully_qualified = CL.fully_qualified_name(cls)
@@ -206,40 +210,42 @@ Defined in header <*{incl}*>
 {cls_doc.brief_doc}
 
 {cls_doc.doc}
-    """.format(cls = cls, incl = incl.strip(), separator = '=' * (len(cls_name_fully_qualified)), templ_synop = make_synopsis_template_decl(cls), cls_doc = cls_doc, cls_fully_qualified = cls_fully_qualified)
+    """.format(cls = cls, incl = incl.strip(), separator = '=' * (len(cls_name_fully_qualified)), templ_synop = make_synopsis_template_decl(cls), cls_doc = cls_doc, cls_name_fully_qualified = cls_name_fully_qualified)
 
     # 
-    R += doc_class.doc
-    if 'tparam' in doc_elem:    R += make_header('Template parameters') + render_list(doc_elem['tparam'])
-    if 'note' in doc_elem :     R += render_note(doc_elem['note'])
-    if 'warning' in doc_elem:   R += render_warning(doc_elem['warning'])
-    if 'figure' in doc_elem:    R += render_fig(doc_elem['figure'])
+    R += cls_doc.doc
+    if 'tparam' in doc_elem:    R += make_header('Template parameters') + render_list(doc_elem.pop('tparam'))
+    if 'note' in doc_elem :     R += render_note(doc_elem.pop('note'))
+    if 'warning' in doc_elem:   R += render_warning(doc_elem.pop('warning'))
+    if 'figure' in doc_elem:    R += render_fig(doc_elem.pop('figure'))
 
     # Members
     c_members = list(CL.get_members(cls, True)) 
     if len(c_members) > 0:
         R += make_header('Public members') 
-        R += make_table([(t.spelling,t.type.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_members])
+        R += render_table([(t.spelling,t.type.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_members])
 
     # Using : TODO : KEEP THIS ?
     c_usings = list(CL.get_usings(cls)) 
     if len(c_usings) > 0:
         R += make_header('Member types') 
-        R += make_table([(t.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_usings])
+        R += render_table([(t.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_usings])
 
     # A table for all member functions and all friend functions
     def make_func_list(all_f, header_name):
+        R = ''
         if len(all_f) > 0:
             R += make_header('Member functions') 
-            R += make_table([(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), doc_methods[name][0].brief_doc) for name in all_f])
+            R += render_table([(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), f_list[0].processed_doc.brief_doc) for (name, f_list) in all_f.items()])
             R += toctree_hidden
             for f_name in all_f:
                R += "    {cls.spelling}/{f_name}\n".format(cls = cls, f_name = f_name)
+        return R
 
-    make_func_list(all_methods, 'Member functions')
-    make_func_list(all_friend_functions, 'Non Member functions')
+    R += make_func_list(all_methods, 'Member functions')
+    R += make_func_list(all_friend_functions, 'Non Member functions')
 
     # Example
-    if 'example' in doc_elem: R += render_example(doc_elem['example'])
+    if 'example' in doc_elem: R += render_example(doc_elem.pop('example'))
     
     return R

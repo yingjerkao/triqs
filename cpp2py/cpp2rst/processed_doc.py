@@ -33,7 +33,9 @@ def replace_latex(s, escape_slash=False):
        $$X XX$$  by \n\n.. math:\n\t\tX XX\n\n..\n
        [[ XXX]]  by :ref:` XXX`
      
-     """
+    """
+    if not s : return s
+    print s
     any_math_char = 'A-Za-z0-9{}\[\],;|\(\)=./\/+-_^\'' #any math character
     #matches all expressions starting and ending with any math char, with possibly whitespaces in between
     pattern_1 = '\$(['+any_math_char+']['+any_math_char+' ]*['+any_math_char+']+)\$'
@@ -55,37 +57,44 @@ def replace_latex(s, escape_slash=False):
 
 class ProcessedDoc: 
     
-    # NEEDED ???? pop them when used ?
-    fields_allowed_in_docs = ['include', 'return', 'synopsis', 'warning','figure', 'note', 'example', 'param', 'tparam'] #, 'manual_methods', 'manual_friends'] 
-    
+    fields_allowed_in_docs = ['include', 'return', 'synopsis', 'warning','figure', 'note', 'example', 'param', 'tparam'] 
+    fields_with_multiple_entry = ['param', 'tparam']
+
     """
       Result of the processing of the documentation string for a function or a class
       
       self.brief_doc : first line
       self.doc       : rest of the doc
       self.elements : dict with all fields @XXX -> Value
+                      params, tparams will always be a list, if present 
 
       Replace latex with proper rst call in all fields.
-
-
     """
     def __init__(self, raw_doc) : 
         if not raw_doc : raw_doc = "\n\n" # default value
-
-        # We start with the raw doc
-        raw_doc = node.raw_comment if node.raw_comment else "\n\n"
         
         # Clean *, &&, /// and co.
-        for p in [r"/\*",r"\*/",r"^\s*\*", r"///", r"//", r"\\brief"] : 
+        for p in [r"/\*",r"\*/",r"^\s*\*", r'\*\s*\n', r"///", r"//", r"\\brief"] : 
             doc = re.sub(p,"",raw_doc, flags = re.MULTILINE)
         
         # split : the first line is brief, and the rest
-        doc = doc.split('@',1) # Get rid of everything after the first @
+        doc = doc.split('@',1)[0] # Get rid of everything after the first @
         doc = replace_latex(doc)
         spl = doc.strip().split('\n',1) 
+        
         self.brief_doc, self.doc = spl[0], (spl[1] if len(spl)>1 else '') 
 
         # Extract the @XXXX elements with a regex @XXXX YYYY (YYYY can be multiline).
-        self.elements = dict ( (m.group(1), replace_latex(m.group(2)).strip()) for m in re.finditer(r'@(\w+)\s*([^@]*)', raw_doc, re.DOTALL) : 
-        for key in self.elements:
-           assert key in self.fields_allowed_in_docs, "Field @%s is not recognized" # warning only ?
+        d = dict( (key, []) for key in self.fields_with_multiple_entry)
+        regex = r'@(\w+)\s*([^@]*)'
+        for m in re.finditer(regex, raw_doc, re.DOTALL):
+            key, val = m.group(1), replace_latex(m.group(2)).strip()
+            if key not in self.fields_allowed_in_docs:
+                print "Field %s is not recognized"
+            if key in self.fields_with_multiple_entry:
+                d[key].append(val.split(' ',1))
+            else:
+                d[key] = val
+        
+        self.elements = d
+
