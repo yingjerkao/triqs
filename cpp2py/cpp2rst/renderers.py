@@ -36,10 +36,6 @@ def render_list(item_list, header):
     if not item_list: return ''
     head = make_header(header) if header else ''
     l = [ (x+'   ').split(' ',1) for x in item_list]
-    #f = lambda x : (x+'   ').split(' ',1) #ensure there are always 2 items in the list
-    #for x in item_list:
-    #    print (x+'   ').split(' ',1)
-    print l
     return head + '\n'.join(" * **%s**: %s\n"%(k,v) for (k,v) in l)
 
 def render_note(s) :
@@ -87,7 +83,7 @@ def render_example(filename):
     decal = 4
     # Hard error ?
     if not os.path.exists(filename):
-        print "example file %s (in %s) does not exist"%(filename,os.getcwd())
+        #print "example file %s (in %s) does not exist"%(filename,os.getcwd())
         return ''
     ls = open(filename).read().strip().split('\n')
     # What is this ??
@@ -159,25 +155,27 @@ def render_fnt(parent_class, f_name, f_overloads):
     
     # HOW DO WE GROUP THE OVERLOAD
     # Enumerate all overloads
-    for n, (m,doc) in enumerate(zip(f_overloads, overload_docs)):
+    for n, (f,doc) in enumerate(zip(f_overloads, overload_docs)):
+        doc = f.processed_doc
         doc_elem = doc.elements
-        
+
         num = '(%s)'%(n+1) if len(f_overloads)>1 else ''
-        R += num + doc.brief_doc + '\n'
+        R += '\n' + num + doc.brief_doc + '\n'
         R += doc.doc
 
         # TODO which order ?
         if 'note' in doc_elem :     R += render_note(doc_elem.pop('note'))
         if 'warning' in doc_elem:   R += render_warning(doc_elem.pop('warning'))
         if 'figure' in doc_elem:    R += render_fig(doc_elem.pop('figure'))
-        if 'return' in doc_elem:    R += make_header('Return value')        + doc_elem.pop('return')
         if 'tparam' in doc_elem:    R += render_list(doc_elem.pop('tparam'), 'Template parameters')
         if 'param' in doc_elem:     R += render_list(doc_elem.pop('param'), 'Parameters')
+        if 'return' in doc_elem:    R += make_header('Return value')        + doc_elem.pop('return')
 
     # any example from the overloads
     # Should we TAKE ONLY ONE ????? Error ??
     example_file_name = reduce(lambda x,y : x or y, [ d.elements.pop('example', '') for d in overload_docs], '')  
     R += render_example(example_file_name)
+
     return R
 
 #------------------------------------

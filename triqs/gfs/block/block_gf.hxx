@@ -255,7 +255,7 @@ namespace triqs {
       /**
     * Assignment operator overload specific for mpi_lazy objects (keep before general assignment)
     *
-    * @param l The lazy object returned by mpi_reduce
+    * @param l ZOZOZOZO The lazy object returned by mpi_reduce
     */
       block_gf &operator=(mpi_lazy<mpi::tag::reduce, block_gf::const_view_type> l) {
         _block_names = l.rhs.block_names();

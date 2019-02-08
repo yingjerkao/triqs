@@ -17,7 +17,6 @@ def safe_write(output_name, data):
     with open("{output_name}.rst".format(output_name=output_name), "w") as f:
         f.write(re.sub(regex_space_end_of_line,'',data.strip()))
 
-
 def mkchdir(*subdirs):
     for d in subdirs:
         try:
@@ -94,7 +93,7 @@ class Cpp2Rst:
 
         # Build the doc for all functions
         for f in all_functions:
-            f.processed_doc = ProcessedDoc(f.raw_comment)
+            f.processed_doc = ProcessedDoc(f)
 
         # c : AST node of name A::B::C::clsname makes and cd into A/B/C
         def mkchdir_for_one_node(node): mkchdir(* ( CL.fully_qualified_name(node).split('::')[:-1]))
@@ -126,7 +125,7 @@ class Cpp2Rst:
             print " ... class :  " + c.spelling, CL.fully_qualified_name(c)
 
             # process the doc of the class and add it to the node
-            c.processed_doc = ProcessedDoc(c.raw_comment)
+            c.processed_doc = ProcessedDoc(c)
 
             # all methods and constructors
             constructors = list(CL.get_constructors(c))
@@ -140,7 +139,7 @@ class Cpp2Rst:
             # process the doc for all methods and functions, and store it in the node.
             for (n,f_list) in (all_methods.items() + all_friend_functions.items()):
                 for f in f_list:
-                    f.processed_doc = ProcessedDoc(f.raw_comment)
+                    f.processed_doc = ProcessedDoc(f)
 
             # One directory for the class
             cur_dir = os.getcwd()
@@ -155,7 +154,7 @@ class Cpp2Rst:
 
             # write a file for each function
             def render(mess, d) : 
-                for f_name, f_overloads in all_methods.items():
+                for f_name, f_overloads in d.items():
                     print " ...... %s %s"%(mess, f_name)               
                     r = render_fnt(parent_class = c, f_name = f_name, f_overloads = f_overloads)
                     safe_write(f_name, r)
@@ -168,13 +167,12 @@ class Cpp2Rst:
 
         all_functions = regroup_func_by_names(all_functions)
 
-        docs = dict ( (n, [ProcessedDoc(f.raw_comment) for f in fs]) for (n,fs) in all_functions.items())
+        docs = dict ( (n, [ProcessedDoc(f) for f in fs]) for (n,fs) in all_functions.items())
 
         for f_name, f_overloads in all_functions.items():
-            print " ... function " + f_name
+            print " ... function " + f_name, "      [", f_overloads[0].location.file.name, ']'
             cur_dir = os.getcwd()
             mkchdir_for_one_node(f_overloads[0])
-            print " ..... located: ", f_overloads[0].location.file.name
             r = render_fnt(parent_class = None, f_name = f_name, f_overloads = f_overloads)
             safe_write(f_name, r)            
             os.chdir(cur_dir)

@@ -1,6 +1,7 @@
 import re
 from collections import OrderedDict
-
+import cpp2py.clang_parser as CL
+ 
 # MOVE THIS ... NOT USED "HERE 
 """
 Meaning of the @option in the doc:
@@ -69,19 +70,32 @@ class ProcessedDoc:
 
       Replace latex with proper rst call in all fields.
     """
-    def __init__(self, raw_doc) : 
+    def __init__(self, node): 
+        raw_doc = node.raw_comment
         if not raw_doc : raw_doc = "\n\n" # default value
         
         # Clean *, &&, /// and co.
-        doc = raw_doc
+        doc = raw_doc.strip()
         for p in [r"/\*",r"\*/",r"^\s*\*", r'\*\s*\n', r'\*/\s*$',r"///", r"//", r"\\brief"] : 
             doc = re.sub(p,"",doc, flags = re.MULTILINE)
-
+        
         # split : the first line is brief, and the rest
-        doc2 = doc.split('@',1)[0] # Get rid of everything after the first @
-        doc2 = replace_latex(doc)
+        doc = replace_latex(doc)
+        if '$' in doc : 
+            print "FAILED to process the latex for node %s"%CL.fully_qualified(node)
+            print doc
+            #assert 0
+        doc2 = doc.strip().split('@',1)[0] # Get rid of everything after the first @
         spl = doc2.strip().split('\n',1) 
         self.brief_doc, self.doc = spl[0], (spl[1] if len(spl)>1 else '') 
+
+        # print self.doc
+        # print "------------"
+        # print raw_doc
+        # print "------------"
+        # print doc2
+
+        assert '@' not in self.doc, "ouch!"
 
         # Extract the @XXXX elements with a regex @XXXX YYYY (YYYY can be multiline).
         d = dict( (key, []) for key in self.fields_with_multiple_entry)
@@ -96,7 +110,7 @@ class ProcessedDoc:
                 d[key] = val
         
         self.elements = d
-        #print "####################################"
-        #print d
-        #print "--------------------------------"
+        # print "####################################"
+        # print d
+        # print "--------------------------------"
 
