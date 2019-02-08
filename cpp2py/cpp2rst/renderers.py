@@ -141,7 +141,6 @@ def render_fnt(parent_class, f_name, f_overloads):
 """.format(f_name_full = f_name_full, class_rst_ref = parent_cls_spelling + f_name)
 
     R += '=' * (len(f_name_full)+0) + '\n' + """
-**Synopsis**:
 
 .. code-block:: c
 
@@ -204,8 +203,6 @@ def render_cls(cls, all_methods, all_friend_functions):
 
 Defined in header <*{incl}*>
 
-**Synopsis**:
-
 .. code-block:: c
 
     {templ_synop}class {cls.spelling};
@@ -235,11 +232,16 @@ Defined in header <*{incl}*>
         R += render_table([(t.spelling, replace_latex(clean_doc_string(t.raw_comment)) if t.raw_comment else '') for t in c_usings])
 
     # A table for all member functions and all friend functions
+    def group_of_overload(f_list): 
+        s = set(f.processed_doc.elements['group'] for f in f_list if 'group' in f.processed_doc.elements)
+        assert len(s) < 2, "Can not have different group for various overload"
+        return s.pop if s else ''
+   
     def make_func_list(all_f, header_name):
         R = ''
         if len(all_f) > 0:
-            R += make_header(header_name) 
-            R += render_table([(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), f_list[0].processed_doc.brief_doc) for (name, f_list) in all_f.items()])
+            R += make_header(header_name)
+            R += render_table([(":ref:`%s <%s_%s>`"%(name,escape_lg(cls.spelling), escape_lg(name)), f_list[0].processed_doc.brief_doc) for (name, f_list) in all_f.items() ])
             R += toctree_hidden
             for f_name in all_f:
                R += "    {cls.spelling}/{f_name}\n".format(cls = cls, f_name = f_name)

@@ -18,7 +18,7 @@ def make_synopsis_template_decl(node):
     return "template<%s> "%targs
 
 shift = 4
-maxlen = 80
+maxlen = 120
 
 # def reindent(s, shift):
     # if shift >= 0 : return '\n'.join(shift*' ' + x for x in s.split('\n'))
@@ -62,12 +62,11 @@ def make_synopsis_one_function(f):
     l = len(res)
     for x in params : 
         if l + len(x) > maxlen : 
-            res += '\n' + 7*' '
-            l = 7
+            res += '\n' + 9*' '
+            l = 9
         l +=len(x)
         res += x + ', '
     if params : res = res[:-2] #eliminate last ,
-    print res
     return (template + '\n' + 7*' ' if template else '') + res + ') ' + qualif
 
 

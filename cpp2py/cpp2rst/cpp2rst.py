@@ -122,7 +122,7 @@ class Cpp2Rst:
                 print "Skipping a class with an empty name !"
                 continue
 
-            print " ... class :  " + c.spelling, CL.fully_qualified_name(c)
+            print " ... class :  " + c.spelling, CL.fully_qualified_name(c), c.kind, CL.get_name_with_template_specialization(c)
 
             # process the doc of the class and add it to the node
             c.processed_doc = ProcessedDoc(c)

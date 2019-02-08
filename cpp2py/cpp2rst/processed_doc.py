@@ -61,7 +61,7 @@ def clean_doc_string(s):
 
 class ProcessedDoc: 
     
-    fields_allowed_in_docs = ['include', 'return', 'synopsis', 'warning','figure', 'note', 'example', 'param', 'tparam'] 
+    fields_allowed_in_docs = ['include', 'return', 'synopsis', 'warning','figure', 'note', 'example', 'param', 'tparam', 'group'] 
     fields_with_multiple_entry = ['param', 'tparam']
 
     """

@@ -129,7 +129,7 @@ def get_name_with_template_specialization(node):
     node is a class
     returns the name, possibly added with the <..> of the specialisation
     """
-    assert node.kind in (CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL, CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION)
+    if not node.kind in (CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL, CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION) : return None
     tokens = get_tokens(node)
     name = node.spelling
     if tokens and tokens[0] == 'template':
