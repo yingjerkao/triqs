@@ -159,6 +159,8 @@ namespace triqs {
 
       /// Access the  mesh
       mesh_t const &mesh() const { return _mesh; }
+
+      /// Domain
       domain_t const &domain() const { return _mesh.domain(); }
 
       /// Direct access to the data array

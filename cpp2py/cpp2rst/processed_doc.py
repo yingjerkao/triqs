@@ -52,6 +52,11 @@ def replace_latex(s, escape_slash=False):
     if escape_slash: text=text.encode('string_escape')
     return text
 
+def clean_doc_string(s):
+    for p in [r"/\*",r"\*/",r"^\s*\*", r'\*\s*\n', r'\*/\s*$',r"///", r"//", r"\\brief"] : 
+        s = re.sub(p,"",s, flags = re.MULTILINE)
+    return s
+
 # ------------------------------------------------------------------------
 
 class ProcessedDoc: 
@@ -74,9 +79,7 @@ class ProcessedDoc:
         if not raw_doc : raw_doc = "\n\n" # default value
         
         # Clean *, &&, /// and co.
-        doc = raw_doc.strip()
-        for p in [r"/\*",r"\*/",r"^\s*\*", r'\*\s*\n', r'\*/\s*$',r"///", r"//", r"\\brief"] : 
-            doc = re.sub(p,"",doc, flags = re.MULTILINE)
+        doc = clean_doc_string(raw_doc.strip())
         
         # split : the first line is brief, and the rest
         doc = replace_latex(doc)

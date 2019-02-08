@@ -1,7 +1,7 @@
 import os, re
 import cpp2py.clang_parser as CL
 from synopsis import make_synopsis_list, make_synopsis_template_decl
-from processed_doc import replace_latex
+from processed_doc import replace_latex, clean_doc_string
 
 # common tools for both rendering functions
 
@@ -146,21 +146,17 @@ def render_fnt(parent_class, f_name, f_overloads):
 .. code-block:: c
 
 """
-
-    # TODO  :
-    overload_docs = [ f.processed_doc for f in f_overloads]
-
     # Synopsis
-    R += make_synopsis_list(f_overloads, overload_docs) + '\n\n'
+    R += make_synopsis_list(f_overloads) + '\n\n'
     
     # HOW DO WE GROUP THE OVERLOAD
     # Enumerate all overloads
-    for n, (f,doc) in enumerate(zip(f_overloads, overload_docs)):
+    for n, f in enumerate(f_overloads):
         doc = f.processed_doc
         doc_elem = doc.elements
 
         num = '(%s)'%(n+1) if len(f_overloads)>1 else ''
-        R += '\n' + num + doc.brief_doc + '\n'
+        R += '\n' + num + ' ' + doc.brief_doc + '\n'
         R += doc.doc
 
         # TODO which order ?
@@ -173,7 +169,7 @@ def render_fnt(parent_class, f_name, f_overloads):
 
     # any example from the overloads
     # Should we TAKE ONLY ONE ????? Error ??
-    example_file_name = reduce(lambda x,y : x or y, [ d.elements.pop('example', '') for d in overload_docs], '')  
+    example_file_name = reduce(lambda x,y : x or y, [ f.processed_doc.elements.pop('example', '') for f in f_overloads], '')  
     R += render_example(example_file_name)
 
     return R
@@ -230,13 +226,13 @@ Defined in header <*{incl}*>
     c_members = list(CL.get_members(cls, True)) 
     if len(c_members) > 0:
         R += make_header('Public members') 
-        R += render_table([(t.spelling,t.type.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_members])
+        R += render_table([(t.spelling,t.type.spelling, replace_latex(clean_doc_string(t.raw_comment)) if t.raw_comment else '') for t in c_members])
 
     # Using : TODO : KEEP THIS ?
     c_usings = list(CL.get_usings(cls)) 
     if len(c_usings) > 0:
         R += make_header('Member types') 
-        R += render_table([(t.spelling, replace_latex(t.raw_comment) if t.raw_comment else '') for t in c_usings])
+        R += render_table([(t.spelling, replace_latex(clean_doc_string(t.raw_comment)) if t.raw_comment else '') for t in c_usings])
 
     # A table for all member functions and all friend functions
     def make_func_list(all_f, header_name):

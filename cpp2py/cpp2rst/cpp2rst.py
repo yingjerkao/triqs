@@ -129,6 +129,7 @@ class Cpp2Rst:
 
             # all methods and constructors
             constructors = list(CL.get_constructors(c))
+            for f in constructors : f.is_constructor = True # tag them for later use
             all_methods = OrderedDict()
             if constructors: all_methods['constructor'] = constructors
             all_methods.update(regroup_func_by_names(CL.get_methods(c, True))) # True : with inherited ?
