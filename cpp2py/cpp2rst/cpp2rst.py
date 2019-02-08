@@ -98,7 +98,7 @@ class Cpp2Rst:
         # c : AST node of name A::B::C::clsname makes and cd into A/B/C
         def mkchdir_for_one_node(node): mkchdir(* ( CL.fully_qualified_name(node).split('::')[:-1]))
 
-        # regroup the functions into a lisit of overload
+        # regroup the functions into a list of overloads
         def regroup_func_by_names(fs):
             """ Given a list of functions, regroup them by names"""
             d = OrderedDict()

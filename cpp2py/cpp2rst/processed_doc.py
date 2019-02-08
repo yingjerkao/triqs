@@ -2,7 +2,6 @@ import re
 from collections import OrderedDict
 import cpp2py.clang_parser as CL
  
-# MOVE THIS ... NOT USED "HERE 
 """
 Meaning of the @option in the doc:
 
@@ -84,17 +83,9 @@ class ProcessedDoc:
         if '$' in doc : 
             print "FAILED to process the latex for node %s"%CL.fully_qualified(node)
             print doc
-            #assert 0
         doc2 = doc.strip().split('@',1)[0] # Get rid of everything after the first @
         spl = doc2.strip().split('\n',1) 
         self.brief_doc, self.doc = spl[0], (spl[1] if len(spl)>1 else '') 
-
-        # print self.doc
-        # print "------------"
-        # print raw_doc
-        # print "------------"
-        # print doc2
-
         assert '@' not in self.doc, "ouch!"
 
         # Extract the @XXXX elements with a regex @XXXX YYYY (YYYY can be multiline).
@@ -108,9 +99,5 @@ class ProcessedDoc:
                 d[key].append(val)
             else:
                 d[key] = val
-        
         self.elements = d
-        # print "####################################"
-        # print d
-        # print "--------------------------------"
 
