@@ -10,6 +10,10 @@ rst_start = """
    Generated automatically by cpp2rst
 
 .. highlight:: c
+.. role:: red
+.. role:: green
+.. role:: param
+.. role:: cppbrief
 
 """
 
@@ -142,8 +146,6 @@ def render_fnt(parent_class, f_name, f_overloads):
 
     R += '=' * (len(f_name_full)+0) + '\n' + """
 
-.. code-block:: c
-
 """
     # Synopsis
     R += make_synopsis_list(f_overloads) + '\n\n'
@@ -154,7 +156,7 @@ def render_fnt(parent_class, f_name, f_overloads):
         doc = f.processed_doc
         doc_elem = doc.elements
 
-        num = '(%s)'%(n+1) if len(f_overloads)>1 else ''
+        num = '%s.'%(n+1) if len(f_overloads)>1 else ''
         R += '\n' + num + ' ' + doc.brief_doc + '\n'
         R += doc.doc
 

@@ -15,10 +15,10 @@ def make_synopsis_template_decl(node):
     tparams = CL.get_template_params(node)
     if not tparams: return ''
     targs = ', '.join("%s %s"%(pp[0],pp[1]) + (" = %s"%pp[2] if (len(pp)==3 and pp[2]) else '') for pp in tparams)
-    return "template<%s> "%targs
+    return "template<%s>"%targs
 
 shift = 4
-maxlen = 120
+maxlen = 90
 
 # def reindent(s, shift):
     # if shift >= 0 : return '\n'.join(shift*' ' + x for x in s.split('\n'))
@@ -27,8 +27,11 @@ maxlen = 120
 
 def process_param_type(t_name, remove):
     t_name = re.sub(remove, '', t_name)
-    if t_name in class_list_name: # has a link
-       d = decay(t_name)
+    # replace const A & by A const & 
+    t_name = re.sub(r'const ([^&]*) &', r'\1 const &', t_name)
+    d = decay(t_name)
+    #print "class_list_name", class_list_name
+    if d in class_list_name: # has a link
        return t_name.replace(d,":ref:`%s <%s>`"%(d,d))
     else:
        return t_name
@@ -38,7 +41,7 @@ def process_rtype(t_name, remove):
     tname =  re.sub(r"\s*typename\s+std\d*::enable_if<(.*),(.*)>::type", r"requires(\1)\n \2 ", t_name)
     return tname
 
-def make_synopsis_one_function(f):
+def make_synopsis_one_function(f, number):
     """
         Given the AST node for a function f, returns the synopsis
     """
@@ -56,21 +59,23 @@ def make_synopsis_one_function(f):
     qualif = CL.get_method_qualification(f) + (' noexcept' if getattr(f,'noexcept',False) else '')
    
     params1 = [(p.type.spelling, p.spelling, CL.get_param_default_value(p)) for p in CL.get_params(f)]
-    params = ["%s %s"%(process_param_type(t, remove = ns),n) + (" = %s"%d if d else "") for t,n,d in params1]
+    params = ["%s %s"%(process_param_type(t, remove = ns), ":param:`%s`"%n if n else '') + (" = %s"%d if d else "") for t,n,d in params1]
   
-    res = result_type + name + '('
-    l = len(res)
-    for x in params : 
-        if l + len(x) > maxlen : 
-            res += '\n' + 9*' '
-            l = 9
-        l +=len(x)
-        res += x + ', '
-    if params : res = res[:-2] #eliminate last ,
-    return (template + '\n' + 7*' ' if template else '') + res + ') ' + qualif
+    # first attempt : one line
+    nspace = 8 if number>=10 else 7 
+    sep = nspace*' ' +  '| '
+    sep2 = ',\n'  + sep + '  '
+    res1 = sep + result_type + name + '(' 
+    res  = res1 +  ', '.join(x for x in params)
+    if len(res) > maxlen: # not good, need to split
+        res = res1 + sep2.join(x for x in params)
+    
+    brief = f.processed_doc.brief_doc
+    r = ('%s:cppbrief:`%s`\n'%(sep,brief) if brief else '') + ('%s:green:`%s`\n'%(sep,template) if template else '')  + res + ') ' + qualif
+    return r.strip()
 
 
 def make_synopsis_list(f_list):
-    return '  ' + '\n\n  '.join("(%s) %s"%(n,make_synopsis_one_function(f)) for n, f in enumerate(f_list))
+    return ' **Synopsis**\n\n .. rst-class:: cppsynopsis\n\n    ' + '\n\n    '.join("%s. %s"%(n+1,make_synopsis_one_function(f, n+1)) for n, f in enumerate(f_list))
 
 
