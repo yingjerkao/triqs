@@ -81,4 +81,8 @@ macro(add_python_test testname)
   set_tests_properties(${testname_} PROPERTIES PROCESSORS ${TEST_MPI_NUMPROC})
  endif(TEST_MPI_NUMPROC)
 
+ if(SANITIZER_RT_PRELOAD)
+   set_property(TEST ${testname_} APPEND PROPERTY ENVIRONMENT ${SANITIZER_RT_PRELOAD})
+ endif()
+
 endmacro(add_python_test)
