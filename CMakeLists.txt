@@ -41,7 +41,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 # Start project
 #---------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 2.8.7 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 project (triqs C CXX)
 
 ## C & C++ Headers
@@ -113,7 +113,7 @@ find_package(Git)
 
 # Define the TRIQS Version Numbers
 set(TRIQS_VERSION_MAJOR 2)
-set(TRIQS_VERSION_MINOR 1)
+set(TRIQS_VERSION_MINOR 2)
 set(TRIQS_VERSION_PATCH 0)
 set(TRIQS_VERSION ${TRIQS_VERSION_MAJOR}.${TRIQS_VERSION_MINOR}.${TRIQS_VERSION_PATCH})
 
@@ -162,12 +162,18 @@ endif()
 # CMake will adjust any linker flags from '-L path_to/mylib.so' to -lmylib
 # if the proper mylib.so is automatically found by the linker, i.e.
 # the directory comes first in LIBRARY_PATH.
-# The clang linker however ignores LIBRARY_PATH. By unsetting LIBRARY_PATH
-# we enforce absolute paths in the linker flags
+# The clang linker however ignores LIBRARY_PATH.
+# We thus explicitly add the content of LIBRARY_PATH to the LDFLAGS
+# FIXME For future cmake versions we should populate the
+# INTERFACE_LINK_DIRECTORIES of the triqs target
 # ---------------------------------
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  message(STATUS "Unsetting LIBRARY_PATH to avoid cmake+clang linktime problems")
-  unset(ENV{LIBRARY_PATH})
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND DEFINED ENV{LIBRARY_PATH})
+  string(REPLACE ":" ";" LINK_DIRS $ENV{LIBRARY_PATH})
+  foreach(dir ${LINK_DIRS})
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -L${dir}")
+    string(APPEND CMAKE_MODULE_LINKER_FLAGS " -L${dir}")
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " -L${dir}")
+  endforeach()
 endif()
 
 # -----------------------------------------------------------------------------

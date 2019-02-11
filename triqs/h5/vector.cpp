@@ -65,17 +65,16 @@ namespace triqs {
           // auto status = H5Tset_size (strdatatype, s);
           // auto status = H5Tset_size (strdatatype, H5T_VARIABLE);
 
+          if(V.empty() || lv == 0) buf.resize(1);
+
           buf.resize(V.size() * lv * (s + 1), 0x00);
           for (int i = 0, k = 0; i < V.size(); i++)
             for (int j = 0; j < lv; j++, k++) {
               if (j < V[i].size()) strcpy(&buf[k * (s + 1)], V[i][j].c_str());
             }
 
-          // for (auto x : buf) std::cout << "buf "<< int(x) << std::endl;
-
-          hsize_t L[2] = {V.size(), lv};
-          hsize_t S[2] = {lv, 1};
-          d_space      = dataspace_from_LS(2, false, L, L, S);
+          hsize_t totdimsf[2] = {V.size(), lv};
+          d_space = H5Screate_simple(2, totdimsf, NULL);
         }
       };
     } // namespace
@@ -173,6 +172,7 @@ namespace triqs {
 
       // buffer
       size_t size = H5Aget_storage_size(attr);
+      if(size == 0) return;
       std::vector<char> buf(size, 0x00);
 
       auto err = H5Aread(attr, datatype, (void *)(&buf[0]));
@@ -187,7 +187,7 @@ namespace triqs {
         for (int j = 0; j < dims_out[1]; ++j, ++k) {
           std::string x = "";
           x.append(&buf[k * (s_size)]);
-          if (!x.empty()) v.push_back(x);
+          v.push_back(x);
         }
         V.push_back(v);
       }
