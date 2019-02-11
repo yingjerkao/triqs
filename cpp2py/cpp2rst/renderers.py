@@ -40,7 +40,7 @@ def render_list(item_list, header):
     if not item_list: return ''
     head = make_header(header) if header else ''
     l = [ (x+'   ').split(' ',1) for x in item_list]
-    return head + '\n'.join(" * **%s**: %s\n"%(k,v) for (k,v) in l)
+    return head + '\n'.join(" * **%s**: %s\n"%(k.strip(),v) for (k,v) in l)
 
 def render_note(s) :
     """ Make rst code for a note. Nothing if empty  """
@@ -229,6 +229,9 @@ Defined in header <*{incl}*>
 
     # Using : TODO : KEEP THIS ?
     c_usings = list(CL.get_usings(cls)) 
+    for t in c_usings: 
+        t.my_tag = t.spelling
+
     if len(c_usings) > 0:
         R += make_header('Member types') 
         R += render_table([(t.spelling, replace_latex(clean_doc_string(t.raw_comment)) if t.raw_comment else '') for t in c_usings])

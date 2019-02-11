@@ -31,10 +31,10 @@ execute_process(COMMAND ${CPP2PY_BINARY_DIR}/bin/cp_rs ${CMAKE_CURRENT_SOURCE_DI
 # list of namespaces selected by c++2rst
 set(NS
     -N triqs::gfs
-    #-N triqs::det_manip
-    #-N triqs::mc_tools
-    #-N triqs::hilbert_space
-    #-N triqs::atom_diag
+    -N triqs::det_manip
+    -N triqs::mc_tools
+    -N triqs::hilbert_space
+    -N triqs::atom_diag
     #-N triqs::statistics
     )
 

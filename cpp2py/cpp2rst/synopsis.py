@@ -30,7 +30,7 @@ def process_param_type(t_name, remove):
     # replace const A & by A const & 
     t_name = re.sub(r'const ([^&]*) &', r'\1 const &', t_name)
     d = decay(t_name)
-    #print "class_list_name", class_list_name
+    print "class_list_name", t_name, class_list_name
     if d in class_list_name: # has a link
        return t_name.replace(d,":ref:`%s <%s>`"%(d,d))
     else:
@@ -54,10 +54,13 @@ def make_synopsis_one_function(f, number):
     
     template = make_synopsis_template_decl(f)
     
-    result_type = process_rtype(f.result_type.spelling, remove = ns) if is_not_constructor else ''
+    result_type = (process_rtype(f.result_type.spelling, remove = ns) + ' ') if is_not_constructor else ''
     name = " %s "%f.spelling.strip() if is_not_constructor else f.spelling.split('<',1)[0] # eliminate the <> in the constructor name
     qualif = CL.get_method_qualification(f) + (' noexcept' if getattr(f,'noexcept',False) else '')
-   
+  
+    #for p in CL.get_params(f):
+    #    print p.type.get_canonical().spelling
+
     params1 = [(p.type.spelling, p.spelling, CL.get_param_default_value(p)) for p in CL.get_params(f)]
     params = ["%s %s"%(process_param_type(t, remove = ns), ":param:`%s`"%n if n else '') + (" = %s"%d if d else "") for t,n,d in params1]
   
@@ -65,7 +68,7 @@ def make_synopsis_one_function(f, number):
     nspace = 8 if number>=10 else 7 
     sep = nspace*' ' +  '| '
     sep2 = ',\n'  + sep + '  '
-    res1 = sep + result_type + name + '(' 
+    res1 = sep + result_type + ":red:`%s` "%name.strip() + '(' 
     res  = res1 +  ', '.join(x for x in params)
     if len(res) > maxlen: # not good, need to split
         res = res1 + sep2.join(x for x in params)
@@ -76,6 +79,11 @@ def make_synopsis_one_function(f, number):
 
 
 def make_synopsis_list(f_list):
+    #if len(f_list) == 1 :
+    #     return ' **Synopsis**\n\n .. rst-class:: cppsynopsis\n\n    ' + '\n\n    %s'%make_synopsis_one_function(f_list[0], 0)
+    # overloads
     return ' **Synopsis**\n\n .. rst-class:: cppsynopsis\n\n    ' + '\n\n    '.join("%s. %s"%(n+1,make_synopsis_one_function(f, n+1)) for n, f in enumerate(f_list))
 
+
+# re.findall(r'([^><\s]+)',s)
 
